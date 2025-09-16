@@ -1,5 +1,9 @@
 import  {Router} from "express";
-import { registerUser } from "../controllers/user.controllers.js";
+import { verifyToken } from "../middleware/verifyjwtToken.middlewares.js";
+import { registerUser
+,logoutUser,
+    userLogin,refreshAccessToken,updatePassword
+ } from "../controllers/user.controllers.js";
 const router=Router();
 
 
@@ -9,6 +13,13 @@ router.get("/doctor/", (req, res) => {
 })
 
 router.route("/register").post(registerUser);
+
+
+router.route("/login").post(userLogin)
+router.route("/refresh-token").post(refreshAccessToken)
+router.route("/logout").post(verifyToken, logoutUser)
+
+router.route("/changepassword").put(verifyToken,updatePassword)
 
 
 export {router}
