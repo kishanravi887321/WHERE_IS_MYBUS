@@ -9,8 +9,8 @@ const PORT = process.env.PORT || 5001;
 app.use(express.json());
 
 // Routes
-app.get("/", (req, res) => {
-  res.send("Hello, Express with ES Modules!");
+app.get("/doctor", (req, res) => {
+  res.send("Hello, Doctor!");
 });
 
 // Start server
