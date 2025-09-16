@@ -1,19 +1,26 @@
 import express from "express";
 import dotenv from "dotenv";
-dotenv.config({path:'../../../.env'});
+import  connectDB from "./db/index.db.js";
+dotenv.config({path:'../.env'});
 
 const app = express();
 const PORT = process.env.PORT || 5001;
 
-// Middleware
-app.use(express.json());
+const startServer = async () => {
+  try {
+    // connect MongoDB
+    await connectDB();
 
-// Routes
-app.get("/doctor", (req, res) => {
-  res.send("Hello, Doctor!");
-});
+    // connect Redis
+    
 
-// Start server
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on http://localhost:${PORT}`);
-});
+    // start server after both are connected
+    app.listen(process.env.PORT || 8000, () => {
+      console.log(`⚙️ Server is running at port : ${process.env.PORT}`);
+    });
+  } catch (err) {
+    console.error("❌ Server startup failed", err);
+  }
+};
+
+startServer();
