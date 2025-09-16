@@ -2,6 +2,8 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 import { User } from "../models/user.models.js";
 import ApiError from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
+import bcrypt from "bcrypt";
+import validator from "validator";
 
 
 
@@ -134,11 +136,7 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
             .status(200)
             .cookie("accessToken", accessToken, options)
             .cookie("refreshToken", newRefreshToken, options)
-            .json({
-                status: 200,
-                message: "Access token refreshed successfully",
-                data: { accessToken, refreshToken: newRefreshToken }
-            });
+            .json(new ApiResponse(200, { accessToken, refreshToken: newRefreshToken }, "Access token refreshed successfully"));
 
     } catch (error) {
         throw new ApiError(401, error?.message || "Invalid refresh token");
@@ -170,11 +168,7 @@ const logoutUser = asyncHandler(async (req, res) => {
         .status(200)
         .clearCookie("accessToken", options)
         .clearCookie("refreshToken", options)
-        .json({
-            status: 200,
-            message: "User logged out successfully",
-            data: {}
-        });
+        .json(new ApiResponse(200, {}, "User logged out successfully"));
 });
 
 
@@ -182,43 +176,34 @@ const logoutUser = asyncHandler(async (req, res) => {
 /// update password --->>  using the refreshToken
 
 const updatePassword = asyncHandler(async (req, res) => {
-    try {
-        const { oldpassword, newpassword } = req.body;
+    const { oldpassword, newpassword } = req.body;
 
-        console.log("You hit this route:", oldpassword, newpassword);
+    console.log("You hit this route:", oldpassword, newpassword);
 
-        // Find the user by email (use email from the token)
-        const user = await User.findOne({ email: req.user.email });
-        if (!user) {
-            throw new ApiError(404, "User not found");
-        }
-
-        // Verify if the old password is correct using bcrypt's compare function
-        const isMatch = await bcrypt.compare(oldpassword, user.password);
-        if (!isMatch) {
-            throw new ApiError(400, "Invalid previous password");
-        }
-
-       // check for the strong password
-       if(!validator.isStrongPassword(newpassword)){
-        throw  new ApiError(404,"plzz write the strong password !!!")
-       }
-        user.password=newpassword
-
-        // Save the updated user with the new hashed password
-        await user.save();
-
-        // Send success response
-        return res.status(200).send("Password successfully changed");
-
-    } catch (error) {
-        const statusCode = error.statusCode || 500;
-        console.error("Error:", error.message);
-        return res.status(statusCode).json({
-            success: false,
-            message: error.message || "Something went wrong, please try again later",
-        });
+    // Find the user by email (use email from the token)
+    const user = await User.findOne({ email: req.user.email });
+    if (!user) {
+        throw new ApiError(404, "User not found");
     }
+
+    // Verify if the old password is correct using bcrypt's compare function
+    const isMatch = await bcrypt.compare(oldpassword, user.password);
+    if (!isMatch) {
+        throw new ApiError(400, "Invalid previous password");
+    }
+
+    // check for the strong password
+    if(!validator.isStrongPassword(newpassword)){
+        throw new ApiError(400, "Please write a strong password!");
+    }
+    
+    user.password = newpassword;
+
+    // Save the updated user with the new hashed password
+    await user.save();
+
+    // Send success response
+    return res.status(200).json(new ApiResponse(200, null, "Password successfully changed"));
 });
 
 
