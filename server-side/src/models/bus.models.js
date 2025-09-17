@@ -40,7 +40,7 @@ const busSchema = new Schema({
     },
     isActive: {
         type: Boolean,
-        default: true
+        default: false
     },
     currentLocation: {
         latitude: {
