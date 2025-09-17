@@ -25,7 +25,7 @@ socket.on("driver:joined", (data) => {
       speed: 40,
       heading: 90
     });
-  }, 5000);
+  }, 1000);
 });
 
 socket.on("driver:error", (err) => console.error("❌ Driver error:", err));
