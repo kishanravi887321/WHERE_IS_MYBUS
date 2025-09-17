@@ -298,6 +298,152 @@ const calculateDistance = (lat1, lon1, lat2, lon2) => {
     return d;
 };
 
+// Filter buses by boarding stop
+const getBusesByBoardingStop = asyncHandler(async (req, res) => {
+    const { stopName } = req.params;
+    const { includeDriverStatus = false } = req.query;
+
+    if (!stopName || stopName.trim() === '') {
+        throw new ApiError(400, "Stop name is required");
+    }
+
+    // Get all active buses
+    const buses = await Bus.find({ isActive: true });
+
+    // Filter buses that pass through the specified stop
+    const availableBuses = buses.filter(bus => {
+        // Check if the bus has a route with stops
+        if (!bus.route || !bus.route.stops || bus.route.stops.length === 0) {
+            return false;
+        }
+
+        // Find the boarding stop in the route
+        const boardingStop = bus.route.stops.find(stop => 
+            stop.name && stop.name.toLowerCase().trim() === stopName.toLowerCase().trim()
+        );
+
+        if (!boardingStop) {
+            return false; // Bus doesn't pass through this stop
+        }
+
+        // Get the highest order number (last stop)
+        const maxOrder = Math.max(...bus.route.stops.map(stop => stop.order || 0));
+
+        // Check if the bus continues beyond this stop (stop.order < maxOrder)
+        // This ensures passengers can still board and reach further destinations
+        return boardingStop.order < maxOrder;
+    });
+
+    // Add real-time status if requested
+    let busesWithStatus = availableBuses;
+    if (includeDriverStatus === 'true') {
+        const activeBuses = getActiveBuses();
+        const passengerCounts = getBusPassengerCounts();
+
+        busesWithStatus = availableBuses.map(bus => {
+            const isOnline = activeBuses.some(activeBus => activeBus.busId === bus.busId);
+            const boardingStopDetails = bus.route.stops.find(stop => 
+                stop.name.toLowerCase().trim() === stopName.toLowerCase().trim()
+            );
+
+            return {
+                ...bus.toObject(),
+                isDriverOnline: isOnline,
+                connectedPassengers: passengerCounts[bus.busId] || 0,
+                boardingStop: {
+                    name: boardingStopDetails.name,
+                    latitude: boardingStopDetails.latitude,
+                    longitude: boardingStopDetails.longitude,
+                    order: boardingStopDetails.order,
+                    stopsRemaining: Math.max(...bus.route.stops.map(s => s.order || 0)) - boardingStopDetails.order
+                }
+            };
+        });
+    } else {
+        busesWithStatus = availableBuses.map(bus => {
+            const boardingStopDetails = bus.route.stops.find(stop => 
+                stop.name.toLowerCase().trim() === stopName.toLowerCase().trim()
+            );
+
+            return {
+                ...bus.toObject(),
+                boardingStop: {
+                    name: boardingStopDetails.name,
+                    latitude: boardingStopDetails.latitude,
+                    longitude: boardingStopDetails.longitude,
+                    order: boardingStopDetails.order,
+                    stopsRemaining: Math.max(...bus.route.stops.map(s => s.order || 0)) - boardingStopDetails.order
+                }
+            };
+        });
+    }
+
+    return res.status(200).json(
+        new ApiResponse(200, {
+            stopName: stopName,
+            availableBuses: busesWithStatus,
+            totalBuses: busesWithStatus.length,
+            searchTimestamp: new Date().toISOString()
+        }, `Found ${busesWithStatus.length} buses passing through ${stopName}`)
+    );
+});
+
+// Utility function to get available buses by boarding stop (for internal use)
+export const getAvailableBusesByStop = async (stopName) => {
+    try {
+        // Get all active buses
+        const buses = await Bus.find({ isActive: true });
+
+        // Filter buses that pass through the specified stop
+        const availableBuses = buses.filter(bus => {
+            // Check if the bus has a route with stops
+            if (!bus.route || !bus.route.stops || bus.route.stops.length === 0) {
+                return false;
+            }
+
+            // Find the boarding stop in the route
+            const boardingStop = bus.route.stops.find(stop => 
+                stop.name && stop.name.toLowerCase().trim() === stopName.toLowerCase().trim()
+            );
+
+            if (!boardingStop) {
+                return false; // Bus doesn't pass through this stop
+            }
+
+            // Get the highest order number (last stop)
+            const maxOrder = Math.max(...bus.route.stops.map(stop => stop.order || 0));
+
+            // Check if the bus continues beyond this stop
+            return boardingStop.order < maxOrder;
+        });
+
+        return availableBuses.map(bus => {
+            const boardingStopDetails = bus.route.stops.find(stop => 
+                stop.name.toLowerCase().trim() === stopName.toLowerCase().trim()
+            );
+
+            return {
+                busId: bus.busId,
+                busNumber: bus.busNumber,
+                routeName: bus.routeName,
+                driverName: bus.driverName,
+                capacity: bus.capacity,
+                boardingStop: {
+                    name: boardingStopDetails.name,
+                    latitude: boardingStopDetails.latitude,
+                    longitude: boardingStopDetails.longitude,
+                    order: boardingStopDetails.order,
+                    stopsRemaining: Math.max(...bus.route.stops.map(s => s.order || 0)) - boardingStopDetails.order
+                },
+                route: bus.route
+            };
+        });
+    } catch (error) {
+        console.error('Error getting buses by stop:', error);
+        return [];
+    }
+};
+
 export {
     createBus,
     getAllBuses,
@@ -306,5 +452,6 @@ export {
     deleteBus,
     getBusLocationHistory,
     getActiveBusesStatus,
-    searchBuses
+    searchBuses,
+    getBusesByBoardingStop
 };
