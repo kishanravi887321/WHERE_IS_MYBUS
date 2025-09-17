@@ -444,6 +444,191 @@ export const getAvailableBusesByStop = async (stopName) => {
     }
 };
 
+// 🚌 Find buses that travel from one stop to another
+const getBusesFromStopToStop = asyncHandler(async (req, res) => {
+    const { fromStop, toStop } = req.params;
+    const { includeDriverStatus = false } = req.query;
+
+    // Validate input parameters
+    if (!fromStop || fromStop.trim() === '') {
+        throw new ApiError(400, "From stop name is required");
+    }
+    if (!toStop || toStop.trim() === '') {
+        throw new ApiError(400, "To stop name is required");
+    }
+    if (fromStop.toLowerCase().trim() === toStop.toLowerCase().trim()) {
+        throw new ApiError(400, "From stop and to stop cannot be the same");
+    }
+
+    // Get all active buses
+    const buses = await Bus.find({ isActive: true });
+
+    // Filter buses that travel from fromStop to toStop
+    const validBuses = buses.filter(bus => {
+        // Check if the bus has a route with stops
+        if (!bus.route || !bus.route.stops || bus.route.stops.length < 2) {
+            return false;
+        }
+
+        // Find both stops in the route
+        const fromStopDetails = bus.route.stops.find(stop => 
+            stop.name && stop.name.toLowerCase().trim() === fromStop.toLowerCase().trim()
+        );
+        
+        const toStopDetails = bus.route.stops.find(stop => 
+            stop.name && stop.name.toLowerCase().trim() === toStop.toLowerCase().trim()
+        );
+
+        // Both stops must exist in the route
+        if (!fromStopDetails || !toStopDetails) {
+            return false;
+        }
+
+        // fromStop must come BEFORE toStop (correct travel order)
+        return fromStopDetails.order < toStopDetails.order;
+    });
+
+    // Add detailed information for each valid bus
+    let busesWithJourneyDetails = validBuses.map(bus => {
+        const fromStopDetails = bus.route.stops.find(stop => 
+            stop.name.toLowerCase().trim() === fromStop.toLowerCase().trim()
+        );
+        
+        const toStopDetails = bus.route.stops.find(stop => 
+            stop.name.toLowerCase().trim() === toStop.toLowerCase().trim()
+        );
+
+        // Calculate journey details
+        const stopsInBetween = bus.route.stops.filter(stop => 
+            stop.order > fromStopDetails.order && stop.order < toStopDetails.order
+        ).sort((a, b) => a.order - b.order);
+
+        const totalStopsInJourney = toStopDetails.order - fromStopDetails.order;
+
+        return {
+            ...bus.toObject(),
+            journeyDetails: {
+                fromStop: {
+                    name: fromStopDetails.name,
+                    latitude: fromStopDetails.latitude,
+                    longitude: fromStopDetails.longitude,
+                    order: fromStopDetails.order
+                },
+                toStop: {
+                    name: toStopDetails.name,
+                    latitude: toStopDetails.latitude,
+                    longitude: toStopDetails.longitude,
+                    order: toStopDetails.order
+                },
+                stopsInBetween: stopsInBetween,
+                totalStopsInJourney: totalStopsInJourney,
+                estimatedJourneyTime: `${totalStopsInJourney * 15} minutes` // Assuming 15 mins per stop
+            }
+        };
+    });
+
+    // Add real-time status if requested
+    if (includeDriverStatus === 'true') {
+        const activeBuses = getActiveBuses();
+        const passengerCounts = getBusPassengerCounts();
+
+        busesWithJourneyDetails = busesWithJourneyDetails.map(bus => {
+            const isOnline = activeBuses.some(activeBus => activeBus.busId === bus.busId);
+            
+            return {
+                ...bus,
+                isDriverOnline: isOnline,
+                connectedPassengers: passengerCounts[bus.busId] || 0
+            };
+        });
+    }
+
+    return res.status(200).json(
+        new ApiResponse(200, {
+            fromStop: fromStop,
+            toStop: toStop,
+            availableBuses: busesWithJourneyDetails,
+            totalBuses: busesWithJourneyDetails.length,
+            searchTimestamp: new Date().toISOString()
+        }, `Found ${busesWithJourneyDetails.length} buses traveling from ${fromStop} to ${toStop}`)
+    );
+});
+
+// Utility function to get buses from one stop to another (for internal use)
+export const getAvailableBusesFromStopToStop = async (fromStop, toStop) => {
+    try {
+        // Input validation
+        if (!fromStop || !toStop || fromStop.toLowerCase().trim() === toStop.toLowerCase().trim()) {
+            return [];
+        }
+
+        // Get all active buses
+        const buses = await Bus.find({ isActive: true });
+
+        // Filter buses that travel from fromStop to toStop
+        const validBuses = buses.filter(bus => {
+            // Check if the bus has a route with stops
+            if (!bus.route || !bus.route.stops || bus.route.stops.length < 2) {
+                return false;
+            }
+
+            // Find both stops in the route
+            const fromStopDetails = bus.route.stops.find(stop => 
+                stop.name && stop.name.toLowerCase().trim() === fromStop.toLowerCase().trim()
+            );
+            
+            const toStopDetails = bus.route.stops.find(stop => 
+                stop.name && stop.name.toLowerCase().trim() === toStop.toLowerCase().trim()
+            );
+
+            // Both stops must exist and fromStop must come before toStop
+            return fromStopDetails && toStopDetails && fromStopDetails.order < toStopDetails.order;
+        });
+
+        return validBuses.map(bus => {
+            const fromStopDetails = bus.route.stops.find(stop => 
+                stop.name.toLowerCase().trim() === fromStop.toLowerCase().trim()
+            );
+            
+            const toStopDetails = bus.route.stops.find(stop => 
+                stop.name.toLowerCase().trim() === toStop.toLowerCase().trim()
+            );
+
+            const stopsInBetween = bus.route.stops.filter(stop => 
+                stop.order > fromStopDetails.order && stop.order < toStopDetails.order
+            ).sort((a, b) => a.order - b.order);
+
+            return {
+                busId: bus.busId,
+                busNumber: bus.busNumber,
+                routeName: bus.routeName,
+                driverName: bus.driverName,
+                capacity: bus.capacity,
+                journeyDetails: {
+                    fromStop: {
+                        name: fromStopDetails.name,
+                        latitude: fromStopDetails.latitude,
+                        longitude: fromStopDetails.longitude,
+                        order: fromStopDetails.order
+                    },
+                    toStop: {
+                        name: toStopDetails.name,
+                        latitude: toStopDetails.latitude,
+                        longitude: toStopDetails.longitude,
+                        order: toStopDetails.order
+                    },
+                    stopsInBetween: stopsInBetween,
+                    totalStopsInJourney: toStopDetails.order - fromStopDetails.order
+                },
+                route: bus.route
+            };
+        });
+    } catch (error) {
+        console.error('Error getting buses from stop to stop:', error);
+        return [];
+    }
+};
+
 export {
     createBus,
     getAllBuses,
@@ -453,5 +638,6 @@ export {
     getBusLocationHistory,
     getActiveBusesStatus,
     searchBuses,
-    getBusesByBoardingStop
+    getBusesByBoardingStop,
+    getBusesFromStopToStop
 };
