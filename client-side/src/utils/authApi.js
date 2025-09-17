@@ -1,9 +1,9 @@
-const API_BASE_URL = 'https://where-is-mybus.onrender.com/api';
+const API_BASE_URL = 'https://where-is-mybus.onrender.com';
 
 export const authApi = {
   async register(userData) {
     try {
-      const response = await fetch(`${API_BASE_URL}/users/register`, {
+      const response = await fetch(`${API_BASE_URL}/api/users/register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -28,7 +28,7 @@ export const authApi = {
 
   async login(credentials) {
     try {
-      const response = await fetch(`${API_BASE_URL}/users/login`, {
+      const response = await fetch(`${API_BASE_URL}/api/users/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
