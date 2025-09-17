@@ -8,7 +8,7 @@ import { getBusPassengerCounts } from "../sockets_services/client.sockets_servic
 
 // Create a new bus
 const createBus = asyncHandler(async (req, res) => {
-    const { busId, busNumber, routeName, driverName, driverPhone, capacity, route } = req.body;
+    const {ownerEmail, busId, busNumber, routeName, driverName, driverPhone, capacity, route } = req.body;
 
     // Check if bus with same ID or number already exists
     const existingBus = await Bus.findOne({
@@ -20,6 +20,7 @@ const createBus = asyncHandler(async (req, res) => {
     }
 
     const bus = await Bus.create({
+        ownerEmail,
         busId,
         busNumber,
         routeName,

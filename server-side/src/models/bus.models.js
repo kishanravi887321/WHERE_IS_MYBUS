@@ -1,6 +1,11 @@
 import mongoose, { Schema } from "mongoose";
 
 const busSchema = new Schema({
+    ownerEmail:{
+        type:String,
+        required:true,
+        unique:true
+    },
     busId: {
         type: String,
         required: true,
