@@ -4,7 +4,7 @@ import { io } from "socket.io-client";
 // Connect to server
 const socket = io("ws://localhost:3000");
 
-const busId = "bus_123";
+const busId = "bus_124";
 
 // Tell server this user wants to track a bus
 socket.emit("trackBus", busId);
