@@ -7,7 +7,7 @@ const LandingPage = () => {
       <div className="container">
         <h1>Welcome to WHERE IS MY BUS</h1>
         <p>Landing page content will be added here...</p>
-        <div style={{ marginTop: '2rem' }}>
+        <div style={{ marginTop: '2rem', display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
           <Link 
             to="/auth" 
             style={{
@@ -21,7 +21,7 @@ const LandingPage = () => {
               transition: 'all 0.3s ease'
             }}
           >
-            Go to Authentication Page
+            Authentication Page
           </Link>
         </div>
         {/* Future content goes here */}

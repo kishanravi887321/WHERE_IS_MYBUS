@@ -1,4 +1,4 @@
-const API_BASE_URL = 'https://where-is-mybus.onrender.com';
+const API_BASE_URL = 'https://where-is-mybus.onrender.com/api';
 
 export const authApi = {
   async register(userData) {
@@ -49,37 +49,57 @@ export const authApi = {
       }
       throw error;
     }
+  },
+
+  async logout(accessToken) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/users/logout`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`,
+        },
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.message || 'Logout failed');
+      }
+      
+      return data;
+    } catch (error) {
+      if (error.name === 'TypeError') {
+        throw new Error('Cannot reach server. Try again later');
+      }
+      throw error;
+    }
   }
 };
 
-export const saveAuthData = (authData, dispatch = null) => {
-  // Save to localStorage for persistence
-  localStorage.setItem('accessToken', authData.accessToken);
-  localStorage.setItem('user', JSON.stringify(authData.user));
+export const saveAuthData = (authData) => {
+  // Backend returns: { userLoggedIn, accessToken, refreshToken }
+  const { userLoggedIn, accessToken, refreshToken } = authData;
   
-  // Save to Redux store if dispatch is provided
-  if (dispatch) {
-    const { loginSuccess } = require('../store/slices/authSlice');
-    dispatch(loginSuccess(authData));
-  }
+  // Save to localStorage for persistence
+  localStorage.setItem('accessToken', accessToken);
+  localStorage.setItem('refreshToken', refreshToken);
+  localStorage.setItem('user', JSON.stringify(userLoggedIn));
 };
 
 export const getAuthData = () => {
-  const token = localStorage.getItem('accessToken');
+  const accessToken = localStorage.getItem('accessToken');
+  const refreshToken = localStorage.getItem('refreshToken');
   const user = localStorage.getItem('user');
   return {
-    accessToken: token,
+    accessToken: accessToken,
+    refreshToken: refreshToken,
     user: user ? JSON.parse(user) : null
   };
 };
 
-export const clearAuthData = (dispatch = null) => {
+export const clearAuthData = () => {
   localStorage.removeItem('accessToken');
+  localStorage.removeItem('refreshToken');
   localStorage.removeItem('user');
-  
-  // Clear from Redux store if dispatch is provided
-  if (dispatch) {
-    const { logout } = require('../store/slices/authSlice');
-    dispatch(logout());
-  }
 };
