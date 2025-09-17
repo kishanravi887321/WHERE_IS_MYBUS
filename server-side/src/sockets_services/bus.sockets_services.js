@@ -1,8 +1,7 @@
 import { Bus } from "../models/bus.models.js";
-import { BusLocation } from "../models/busLocation.models.js";
 
 // Store active drivers in memory for quick lookup
-const activeBuses = new Map(); // busId -> { socketId, lastUpdate, driverInfo }
+const activeBuses = new Map(); // busId -> { socketId, lastUpdate, driverInfo, currentLocation }
 
 export const handleDriverConnection = (io, socket) => {
     console.log(`🚌 Driver connected: ${socket.id}`);
@@ -14,7 +13,7 @@ export const handleDriverConnection = (io, socket) => {
             
             console.log(`🔑 Driver attempting to join bus ${busId} with key: ${driverKey}`);
             
-            // Validate bus exists and driver key is correct
+            // Validate bus exists and is active
             const bus = await Bus.findOne({ busId, isActive: true });
             if (!bus) {
                 socket.emit('driver:error', { message: 'Bus not found or inactive' });
@@ -23,7 +22,7 @@ export const handleDriverConnection = (io, socket) => {
             
             // For demo purposes, using simple key validation
             // In production, use proper authentication
-            const expectedKey = `driver_${busId}_2024`;
+            const expectedKey = "1234";
             if (driverKey !== expectedKey) {
                 socket.emit('driver:error', { message: 'Invalid driver key' });
                 return;
@@ -42,24 +41,13 @@ export const handleDriverConnection = (io, socket) => {
             // Join bus room
             await socket.join(`bus_${busId}`);
             
-            // Store driver info
+            // Store driver info in memory only
             activeBuses.set(busId, {
                 socketId: socket.id,
                 lastUpdate: new Date(),
                 driverInfo: driverInfo || { name: 'Unknown Driver' },
-                busId
-            });
-            
-            // Update bus location record
-            await BusLocation.updateLocation(busId, {
-                driverSocketId: socket.id,
-                isDriverOnline: true,
-                location: bus.currentLocation.latitude && bus.currentLocation.longitude 
-                    ? {
-                        latitude: bus.currentLocation.latitude,
-                        longitude: bus.currentLocation.longitude
-                    }
-                    : { latitude: 0, longitude: 0 }
+                busId,
+                currentLocation: null // Will be updated when driver sends location
             });
             
             socket.emit('driver:joined', { 
@@ -105,31 +93,18 @@ export const handleDriverConnection = (io, socket) => {
                 return;
             }
             
-            // Update last update time
+            // Update in-memory data only (no database save)
             busInfo.lastUpdate = new Date();
-            activeBuses.set(busId, busInfo);
-            
-            // Update database
-            const updatedLocation = await BusLocation.updateLocation(busId, {
+            busInfo.currentLocation = {
                 location,
                 speed: speed || 0,
                 heading: heading || 0,
                 accuracy: accuracy || 0,
-                driverSocketId: socket.id,
-                isDriverOnline: true
-            });
+                timestamp: new Date().toISOString()
+            };
+            activeBuses.set(busId, busInfo);
             
-            // Update bus current location
-            await Bus.findOneAndUpdate(
-                { busId },
-                {
-                    'currentLocation.latitude': location.latitude,
-                    'currentLocation.longitude': location.longitude,
-                    'currentLocation.lastUpdated': new Date()
-                }
-            );
-            
-            // Broadcast to all passengers in the bus room
+            // Broadcast to all passengers in the bus room immediately
             const locationUpdate = {
                 busId,
                 location,
@@ -143,13 +118,14 @@ export const handleDriverConnection = (io, socket) => {
             socket.to(`bus_${busId}`).emit('bus:location', locationUpdate);
             
             // Send confirmation to driver
+            const roomSize = io.sockets.adapter.rooms.get(`bus_${busId}`)?.size || 1;
             socket.emit('driver:location:sent', {
                 busId,
                 timestamp: new Date().toISOString(),
-                passengersNotified: io.sockets.adapter.rooms.get(`bus_${busId}`)?.size - 1 || 0
+                passengersNotified: roomSize - 1 // Subtract driver from count
             });
             
-            console.log(`📍 Location updated for bus ${busId}: ${location.latitude}, ${location.longitude}`);
+            console.log(`📍 Location broadcasted for bus ${busId}: ${location.latitude}, ${location.longitude} to ${roomSize - 1} passengers`);
             
         } catch (error) {
             console.error('❌ Error in driver:location:', error);
@@ -186,14 +162,8 @@ const handleDriverDisconnect = async (socketId, busId = null) => {
         }
         
         if (disconnectedBusId) {
-            // Remove from active drivers
+            // Remove from active drivers (memory only)
             activeBuses.delete(disconnectedBusId);
-            
-            // Update database
-            await BusLocation.updateLocation(disconnectedBusId, {
-                driverSocketId: null,
-                isDriverOnline: false
-            });
             
             // Notify passengers
             global.io?.to(`bus_${disconnectedBusId}`).emit('driver:offline', {
@@ -215,11 +185,18 @@ export const getActiveBuses = () => {
         busId,
         driverSocketId: info.socketId,
         lastUpdate: info.lastUpdate,
-        driverInfo: info.driverInfo
+        driverInfo: info.driverInfo,
+        currentLocation: info.currentLocation
     }));
 };
 
 // Check if driver is online for a specific bus
 export const isDriverOnline = (busId) => {
     return activeBuses.has(busId);
+};
+
+// Get current location for a specific bus (from memory)
+export const getCurrentLocation = (busId) => {
+    const busInfo = activeBuses.get(busId);
+    return busInfo?.currentLocation || null;
 };

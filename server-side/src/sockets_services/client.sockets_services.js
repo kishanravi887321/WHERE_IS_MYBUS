@@ -1,6 +1,5 @@
 import { Bus } from "../models/bus.models.js";
-import { BusLocation } from "../models/busLocation.models.js";
-import { isDriverOnline } from "./bus.sockets_services.js";
+import { isDriverOnline, getCurrentLocation } from "./bus.sockets_services.js";
 
 // Store active passengers in memory
 const activePassengers = new Map(); // socketId -> { busId, joinedAt, userInfo }
@@ -26,25 +25,21 @@ export const handleClientConnection = (io, socket) => {
             if (activePassengers.has(socket.id)) {
                 const previousBus = activePassengers.get(socket.id);
                 socket.leave(`bus_${previousBus.busId}`);
-                await updatePassengerCount(previousBus.busId, -1);
             }
             
             // Join new bus room
             await socket.join(`bus_${busId}`);
             
-            // Store passenger info
+            // Store passenger info in memory only
             activePassengers.set(socket.id, {
                 busId,
                 joinedAt: new Date(),
                 userInfo: userInfo || { name: 'Anonymous Passenger' }
             });
             
-            // Update passenger count in database
-            await updatePassengerCount(busId, 1);
-            
-            // Get latest location and driver status
-            const latestLocation = await BusLocation.getLatestLocation(busId);
+            // Get current location from memory (if driver is online)
             const driverOnline = isDriverOnline(busId);
+            const currentLocation = getCurrentLocation(busId);
             
             // Send current bus status to the new passenger
             socket.emit('passenger:joined', {
@@ -56,21 +51,15 @@ export const handleClientConnection = (io, socket) => {
                     capacity: bus.capacity,
                     driverName: bus.driverName
                 },
-                currentLocation: latestLocation ? {
-                    location: latestLocation.location,
-                    speed: latestLocation.speed,
-                    heading: latestLocation.heading,
-                    lastUpdated: latestLocation.lastSeen,
-                    driverOnline: latestLocation.isDriverOnline && driverOnline
-                } : null,
+                currentLocation: currentLocation,
                 driverOnline,
-                passengerCount: io.sockets.adapter.rooms.get(`bus_${busId}`)?.size - (driverOnline ? 1 : 0) || 0
+                passengerCount: (io.sockets.adapter.rooms.get(`bus_${busId}`)?.size || 1) - (driverOnline ? 1 : 0)
             });
             
             // Notify other passengers about new passenger (optional)
             socket.to(`bus_${busId}`).emit('passenger:joined:notification', {
                 busId,
-                passengerCount: io.sockets.adapter.rooms.get(`bus_${busId}`)?.size - (driverOnline ? 1 : 0) || 0,
+                passengerCount: (io.sockets.adapter.rooms.get(`bus_${busId}`)?.size || 1) - (driverOnline ? 1 : 0),
                 newPassenger: userInfo?.name || 'A passenger'
             });
             
@@ -94,23 +83,23 @@ export const handleClientConnection = (io, socket) => {
                 return;
             }
             
-            // Get latest location
-            const latestLocation = await BusLocation.getLatestLocation(busId);
+            // Get current location from memory
             const driverOnline = isDriverOnline(busId);
+            const currentLocation = getCurrentLocation(busId);
             
-            if (latestLocation) {
+            if (currentLocation && driverOnline) {
                 socket.emit('bus:location', {
                     busId,
-                    location: latestLocation.location,
-                    speed: latestLocation.speed,
-                    heading: latestLocation.heading,
-                    accuracy: latestLocation.accuracy,
-                    timestamp: latestLocation.lastSeen.toISOString(),
-                    driverOnline: latestLocation.isDriverOnline && driverOnline
+                    location: currentLocation.location,
+                    speed: currentLocation.speed,
+                    heading: currentLocation.heading,
+                    accuracy: currentLocation.accuracy,
+                    timestamp: currentLocation.timestamp,
+                    driverOnline: true
                 });
             } else {
                 socket.emit('passenger:info', {
-                    message: 'No location data available for this bus',
+                    message: driverOnline ? 'Waiting for location data from driver' : 'Driver is currently offline',
                     driverOnline
                 });
             }
@@ -171,19 +160,17 @@ const handlePassengerDisconnect = async (socketId, busId = null) => {
         if (passengerInfo) {
             const disconnectedBusId = busId || passengerInfo.busId;
             
-            // Remove from active passengers
+            // Remove from active passengers (memory only)
             activePassengers.delete(socketId);
-            
-            // Update passenger count
-            await updatePassengerCount(disconnectedBusId, -1);
             
             // Notify other passengers about decreased count
             const driverOnline = isDriverOnline(disconnectedBusId);
-            const passengerCount = (global.io?.sockets.adapter.rooms.get(`bus_${disconnectedBusId}`)?.size || 1) - (driverOnline ? 1 : 0);
+            const roomSize = global.io?.sockets.adapter.rooms.get(`bus_${disconnectedBusId}`)?.size || 0;
+            const passengerCount = Math.max(0, roomSize - (driverOnline ? 1 : 0));
             
             global.io?.to(`bus_${disconnectedBusId}`).emit('passenger:left:notification', {
                 busId: disconnectedBusId,
-                passengerCount: Math.max(0, passengerCount),
+                passengerCount,
                 leftPassenger: passengerInfo.userInfo?.name || 'A passenger'
             });
             
@@ -191,19 +178,6 @@ const handlePassengerDisconnect = async (socketId, busId = null) => {
         }
     } catch (error) {
         console.error('❌ Error handling passenger disconnect:', error);
-    }
-};
-
-// Helper function to update passenger count in database
-const updatePassengerCount = async (busId, change) => {
-    try {
-        const location = await BusLocation.findOne({ busId });
-        if (location) {
-            location.connectedPassengers = Math.max(0, (location.connectedPassengers || 0) + change);
-            await location.save();
-        }
-    } catch (error) {
-        console.error('❌ Error updating passenger count:', error);
     }
 };
 
