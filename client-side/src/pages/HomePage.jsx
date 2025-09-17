@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useDispatch, useSelector } from 'react-redux';
 import {
   AppShell,
   Text,
@@ -16,6 +18,8 @@ import {
   Burger,
 } from '@mantine/core';
 import { DatePickerInput } from '@mantine/dates';
+import { authApi, clearAuthData, getAuthData } from '../utils/authApi';
+import { logout } from '../store/slices/authSlice';
 import {
   IconMenu2,
   IconArrowsUpDown,
@@ -23,10 +27,15 @@ import {
   IconLanguage,
   IconSettings,
   IconBug,
+  IconLogout,
 } from '@tabler/icons-react';
 import './HomePage.css';
 
 const HomePage = () => {
+  const navigate = useNavigate();
+  const dispatch = useDispatch();
+  const { accessToken } = useSelector((state) => state.auth);
+  
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [fromLocation, setFromLocation] = useState('');
   const [toLocation, setToLocation] = useState('');
@@ -47,6 +56,41 @@ const HomePage = () => {
   // Close sidebar
   const closeSidebar = () => {
     setSidebarOpen(false);
+  };
+
+  // Handle logout
+  const handleLogout = async () => {
+    console.log('Logout started');
+    
+    // Close sidebar first
+    closeSidebar();
+    
+    // Store current accessToken before clearing
+    const currentAccessToken = accessToken;
+    
+    try {
+      // Call logout API if we have a token
+      if (currentAccessToken) {
+        console.log('Calling logout API');
+        await authApi.logout(currentAccessToken);
+        console.log('Logout API successful');
+      }
+    } catch (error) {
+      console.error('Logout API failed:', error);
+      // Continue with logout even if API call fails
+    }
+    
+    // Clear auth data from Redux store
+    console.log('Clearing Redux state');
+    dispatch(logout());
+    
+    // Clear auth data from localStorage
+    console.log('Clearing localStorage');
+    clearAuthData();
+    
+    // Use window.location to force a complete page reload and redirect
+    console.log('Redirecting to landing page with page reload');
+    window.location.href = '/';
   };
 
   // Handle escape key to close sidebar
@@ -341,6 +385,17 @@ const HomePage = () => {
         >
           <IconBug size={20} />
           <Text>Report Issue</Text>
+        </div>
+        
+        <div 
+          className="sidebar-item logout-item" 
+          onClick={handleLogout}
+          tabIndex={0}
+          role="button"
+          onKeyDown={(e) => e.key === 'Enter' && handleLogout()}
+        >
+          <IconLogout size={20} />
+          <Text>Log Out</Text>
         </div>
       </div>
     </div>
