@@ -8,7 +8,7 @@ import { getBusPassengerCounts } from "../sockets_services/client.sockets_servic
 
 // Create a new bus
 const createBus = asyncHandler(async (req, res) => {
-    const {ownerEmail, busId, busNumber, routeName, driverName, driverPhone, capacity, route } = req.body;
+    const {ownerEmail, busId, secretKey, busNumber, routeName, driverName, driverPhone, capacity, route } = req.body;
 
     // Check if bus with same ID or number already exists
     const existingBus = await Bus.findOne({
@@ -21,6 +21,7 @@ const createBus = asyncHandler(async (req, res) => {
 
     const bus = await Bus.create({
         ownerEmail,
+        secretKey,
         busId,
         busNumber,
         routeName,
@@ -628,6 +629,26 @@ export const getAvailableBusesFromStopToStop = async (fromStop, toStop) => {
         return [];
     }
 };
+
+export  const MakeTheBusActive = asyncHandler(async (req, res) => {
+    const { busId,secreatKey } = req.body
+
+    // Find the bus by ID and update its status
+    const bus = await Bus.findById(busId);
+    if (!bus) {
+        return res.status(404).json({ message: "Bus not found" });
+    }
+
+    if(bus.secretKey !== secreatKey){
+        return res.status(403).json({ message: "Invalid secret key" });
+    }
+    ///  i have to now user the redis for cache
+
+    bus.isActive = true;
+    await bus.save();
+
+    return res.status(200).json({ message: "Bus activated successfully" });
+});
 
 export {
     createBus,
