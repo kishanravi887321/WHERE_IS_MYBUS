@@ -1,4 +1,4 @@
-const API_BASE_URL = 'https://where-is-mybus.onrender.com/api';
+const API_BASE_URL = 'https://where-is-mybus.onrender.com/';
 
 export const authApi = {
   async register(userData) {
