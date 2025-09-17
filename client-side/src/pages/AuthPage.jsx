@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useDispatch } from 'react-redux';
+import { useNavigate } from 'react-router-dom';
 import { authApi, saveAuthData } from '../utils/authApi';
 import { loginStart, loginSuccess, loginFailure } from '../store/slices/authSlice';
 import loginBusImage from '../assets/login_bus.png';
@@ -7,6 +8,7 @@ import './AuthPage.css';
 
 const AuthPage = () => {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('login');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -115,8 +117,12 @@ const AuthPage = () => {
           setRegisterForm({ username: '', email: '', password: '' });
         }
         
-        // Here you can add redirect logic later
-        console.log('Auth successful, redirect user...', response.data);
+        // Redirect to homepage after a short delay to show success message
+        setTimeout(() => {
+          navigate('/home');
+        }, 1000);
+        
+        console.log('Auth successful, redirecting to homepage...', response.data);
       }
     } catch (err) {
       dispatch(loginFailure());
