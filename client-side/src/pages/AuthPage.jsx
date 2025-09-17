@@ -95,8 +95,17 @@ const AuthPage = () => {
       }
 
       if (response.success) {
-        // Save to both localStorage and Redux store
-        saveAuthData(response.data, dispatch);
+        // Save to localStorage
+        saveAuthData(response.data);
+        
+        // Save to Redux store
+        const { userLoggedIn, accessToken, refreshToken } = response.data;
+        dispatch(loginSuccess({
+          user: userLoggedIn,
+          accessToken: accessToken,
+          refreshToken: refreshToken
+        }));
+        
         setSuccess(isLogin ? 'Login successful!' : 'Account created successfully!');
         
         // Clear forms
