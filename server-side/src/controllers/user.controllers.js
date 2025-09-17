@@ -20,7 +20,7 @@ const  registerUser = asyncHandler(async (req,res) => {
         $or: [{ username }, { email }]
     });
     if (existUser) {
-         console.log("hekjansd")
+         console.log("User already exists")
         return res.status(409).json(new ApiResponse(409,null,"user already exist !!")) // Conflict status code
     }
 
@@ -33,9 +33,31 @@ const  registerUser = asyncHandler(async (req,res) => {
 
     if(!user) throw new ApiError(401,"error while creating the user");
 
-      return res.status(201).json(
-        new ApiResponse(201, user, "User registered successfully")
-    );
+    // Auto-login the user after successful registration
+    // Generate the access and refresh tokens
+    const accessToken = user.generateAccessToken(user._id);
+    const refreshToken = user.generateRefreshToken(user._id);
+
+    console.log(accessToken, "generateAccessToken", "registration successful");
+    console.log(refreshToken, "generateRefreshToken", "registration successful");
+
+    // Save refresh token to database
+    user.refreshToken = refreshToken;
+    await user.save({ validateBeforeSave: false });
+
+    const userLoggedIn = await User.findById(user._id).select("-password -refreshToken");
+
+    const options = {
+        httpOnly: true,
+        // secure: true,
+        sameSite: "Lax",
+    };
+
+    return res
+        .status(201)
+        .cookie("accessToken", accessToken, options)
+        .cookie("refreshToken", refreshToken, options)
+        .json(new ApiResponse(201, { userLoggedIn, accessToken, refreshToken }, "User registered and logged in successfully!"));
 });
 
 
