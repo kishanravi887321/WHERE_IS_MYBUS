@@ -5,8 +5,20 @@ import { MantineProvider } from '@mantine/core'
 import '@mantine/core/styles.css'
 import '@mantine/dates/styles.css'
 import { store } from './store/index.js'
+import { getAuthData } from './utils/authApi.js'
+import { setAuthFromStorage } from './store/slices/authSlice.js'
 import './index.css'
 import App from './App.jsx'
+
+// Initialize auth state from localStorage
+const authData = getAuthData();
+if (authData.accessToken && authData.user) {
+  store.dispatch(setAuthFromStorage({
+    user: authData.user,
+    accessToken: authData.accessToken,
+    refreshToken: authData.refreshToken
+  }));
+}
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>

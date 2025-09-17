@@ -793,6 +793,23 @@
   background-color: #f8f9fa;
 }
 
+.sidebar-item.logout-item {
+  margin-top: auto;
+  border-top: 1px solid #e9ecef;
+  color: #dc3545;
+}
+
+.sidebar-item.logout-item:hover {
+  background-color: #f8d7da;
+  color: #721c24;
+}
+
+.sidebar-item.logout-item:focus {
+  outline: 2px solid #dc3545;
+  outline-offset: 2px;
+  background-color: #f8d7da;
+}
+
 /* Ensure AppShell header stays below sidebar */
 .mantine-AppShell-header {
   z-index: 100 !important;

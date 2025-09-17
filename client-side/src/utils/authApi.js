@@ -49,6 +49,31 @@ export const authApi = {
       }
       throw error;
     }
+  },
+
+  async logout(accessToken) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/users/logout`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`,
+        },
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.message || 'Logout failed');
+      }
+      
+      return data;
+    } catch (error) {
+      if (error.name === 'TypeError') {
+        throw new Error('Cannot reach server. Try again later');
+      }
+      throw error;
+    }
   }
 };
 
