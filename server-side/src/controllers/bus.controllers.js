@@ -52,8 +52,8 @@ const getAllBuses = asyncHandler(async (req, res) => {
     const total = await Bus.countDocuments(filter);
 
     // Add real-time status to each bus
-    const activeBuses = getActiveBuses();
-    const passengerCounts = getBusPassengerCounts();
+    const activeBuses = await getActiveBuses();
+    const passengerCounts = await getBusPassengerCounts();
 
     const busesWithStatus = buses.map(bus => {
         const isOnline = activeBuses.some(activeBus => activeBus.busId === bus.busId);
@@ -87,8 +87,8 @@ const getBusById = asyncHandler(async (req, res) => {
     const latestLocation = await BusLocation.getLatestLocation(busId);
     
     // Get real-time status
-    const isOnline = isDriverOnline(busId);
-    const passengerCounts = getBusPassengerCounts();
+    const isOnline = await isDriverOnline(busId);
+    const passengerCounts = await getBusPassengerCounts();
 
     const busWithStatus = {
         ...bus.toObject(),
@@ -191,8 +191,8 @@ const getBusLocationHistory = asyncHandler(async (req, res) => {
 
 // Get active buses with live status
 const getActiveBusesStatus = asyncHandler(async (req, res) => {
-    const activeBusesData = getActiveBuses();
-    const passengerCounts = getBusPassengerCounts();
+    const activeBusesData = await getActiveBuses();
+    const passengerCounts = await getBusPassengerCounts();
 
     const statusData = await Promise.all(
         activeBusesData.map(async (activeBus) => {
