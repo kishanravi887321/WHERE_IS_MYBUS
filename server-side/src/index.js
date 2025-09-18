@@ -5,7 +5,7 @@ import {app} from "./app.js"; // Express app
 import connectDB from "./db/index.db.js";
 import  {initSocket} from "./sockets/index.sockets.js";
 import { connectRedis ,redisClient} from "./db/redis.db.js";
-
+import { check } from "./sockets/check.sockets.js";
 
 
 dotenv.config({ path: "../.env" });
@@ -44,94 +44,8 @@ const startServer = async () => {
   }
 };
 
-const check = async () => {
-  try {
-    const client = redisClient();
-    
-    // Ensure client is connected
-    if (!client.isOpen) {
-      await client.connect();
-    }
 
-    // fetch all keys
-    const keys = await client.keys("*");
-
-    if (keys.length === 0) {
-      console.log("No keys found in Redis.");
-      return;
-    }
-
-    // fetch values for each key based on its type
-    for (const key of keys) {
-      try {
-        // Get the type of the key first
-        const keyType = await client.type(key);
-        
-        let value;
-        switch (keyType) {
-          case 'string':
-            value = await client.get(key);
-            console.log(`[${key} (string): ${value}]`);
-            break;
-          case 'hash':
-            const hashValues = await client.hGetAll(key);
-            console.log(`[${key} (hash): ${JSON.stringify(hashValues)}]`);
-            break;
-          case 'list':
-            const listValues = await client.lRange(key, 0, -1);
-            console.log(`[${key} (list): ${JSON.stringify(listValues)}]`);
-            break;
-          case 'set':
-            const setValues = await client.sMembers(key);
-            console.log(`[${key} (set): ${JSON.stringify(setValues)}]`);
-            break;
-          case 'zset':
-            const zsetValues = await client.zRange(key, 0, -1, { withScores: true });
-            console.log(`[${key} (zset): ${JSON.stringify(zsetValues)}]`);
-            break;
-          default:
-            console.log(`[${key} (${keyType}): Unknown type]`);
-        }
-      } catch (error) {
-        console.error(`❌ Error reading key ${key}:`, error.message);
-      }
-    }
-  } catch (error) {
-    console.error('❌ Error in Redis check function:', error);
-  }
-};
 
 startServer();
 
  
-const deleteAllKeys = async () => {
-   try {
-     const client = redisClient();
-     
-     // Ensure client is connected
-     if (!client.isOpen) {
-       await client.connect();
-     }
-     
-     const keys = await client.keys("*");
-     if (keys.length > 0) {
-         await client.del(keys);
-         console.log(`Deleted keys: ${keys.join(", ")}`);
-     } else {
-         console.log("No keys found to delete");
-     }
-   } catch (error) {
-     console.error('❌ Error deleting Redis keys:', error);
-   }
-};
-
-// Comment out the auto-run deleteAllKeys to prevent conflicts
-// (async () => {
-//     try {
-//         await deleteAllKeys();
-//     } catch (err) {
-//         console.error("❌ Redis test failed:", err);
-//     }
-// })();
-
-//
