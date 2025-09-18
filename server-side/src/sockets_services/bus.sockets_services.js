@@ -77,6 +77,11 @@ export const handleDriverConnection = (io, socket) => {
     
     // Driver joins with unique bus ID and driver key
     socket.on('driver:join', async (data) => {
+        if(socket.data.type !== "driver"){
+            socket.emit("error", {message:"Unauthorized: Please identify as driver first"});
+            socket.disconnect(true);
+            return;
+        }
         try {
             const { busId, secretKey, driverInfo } = data;
 

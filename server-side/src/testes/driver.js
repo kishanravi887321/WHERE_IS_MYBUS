@@ -12,7 +12,7 @@ socket.on("connect", () => {
     console.log("🔌 Connected as driver:", socket.id);
 
     // Step 1: Identify as driver
-    socket.emit("identify", { type: "driver", token: "478927", busId: "BUS123" });
+    socket.emit("identify", { type: "driver", token: "162468", busId: "BUS123" });
 
     // Step 2: Join bus as driver
     // 🔹 Moved inside identify:success to ensure server has registered driver listener

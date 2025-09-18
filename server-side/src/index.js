@@ -23,8 +23,10 @@ const startServer = async () => {
     await connectDB();
     console.log("✅ MongoDB connected");
     await connectRedis();
+    // 3️⃣ Delay 3 seconds before running Redis check
+    await new Promise((resolve) => setTimeout(resolve, 3000));
     await check();
-    console.log("✅ Redis connected");
+
 
     // 2️⃣ Create HTTP server (bridge between Express + Socket.IO)
     const server = http.createServer(app);
