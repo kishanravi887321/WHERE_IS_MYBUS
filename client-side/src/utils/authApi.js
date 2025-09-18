@@ -1,4 +1,4 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+const API_BASE_URL = 'https://where-is-mybus.onrender.com/';
 
 export const authApi = {
   async register(userData) {
