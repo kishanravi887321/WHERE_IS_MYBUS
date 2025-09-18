@@ -1,18 +1,18 @@
 import { io } from "socket.io-client";
 
-// const socket = io("https://where-is-mybus.onrender.com" , {
-//   transports: ["websocket"]
-// });
-const socket = io("http://localhost:5001", {
+const socket = io("https://where-is-mybus.onrender.com" , {
   transports: ["websocket"]
 });
+// const socket = io("http://localhost:5001", {
+//   transports: ["websocket"]
+// });
 
 // ✅ Wait for socket connection before emitting anything
 socket.on("connect", () => {
     console.log("🔌 Connected as driver:", socket.id);
 
     // Step 1: Identify as driver
-    socket.emit("identify", { type: "driver", token: "922473", busId: "BUS123" });
+    socket.emit("identify", { type: "driver", token: "478927", busId: "BUS123" });
 
     // Step 2: Join bus as driver
     // 🔹 Moved inside identify:success to ensure server has registered driver listener

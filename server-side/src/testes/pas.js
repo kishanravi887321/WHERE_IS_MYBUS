@@ -1,12 +1,12 @@
 import { io } from "socket.io-client";
 
-// const socket = io("https://where-is-mybus.onrender.com", {
-//   transports: ["websocket"]
-// });
-
-const socket = io("http://localhost:5001", {
+const socket = io("https://where-is-mybus.onrender.com", {
   transports: ["websocket"]
 });
+
+// const socket = io("http://localhost:5001", {
+//   transports: ["websocket"]
+// });
 
 // Step 1: Identify as passenger
 socket.emit("identify", { type: "passenger" });
