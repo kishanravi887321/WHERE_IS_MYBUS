@@ -338,8 +338,8 @@ const getBusesByBoardingStop = asyncHandler(async (req, res) => {
     // Add real-time status if requested
     let busesWithStatus = availableBuses;
     if (includeDriverStatus === 'true') {
-        const activeBuses = getActiveBuses();
-        const passengerCounts = getBusPassengerCounts();
+        const activeBuses = await getActiveBuses();
+        const passengerCounts = await getBusPassengerCounts();
 
         busesWithStatus = availableBuses.map(bus => {
             const isOnline = activeBuses.some(activeBus => activeBus.busId === bus.busId);
@@ -530,8 +530,8 @@ const getBusesFromStopToStop = asyncHandler(async (req, res) => {
 
     // Add real-time status if requested
     if (includeDriverStatus === 'true') {
-        const activeBuses = getActiveBuses();
-        const passengerCounts = getBusPassengerCounts();
+        const activeBuses = await getActiveBuses();
+        const passengerCounts = await getBusPassengerCounts();
 
         busesWithJourneyDetails = busesWithJourneyDetails.map(bus => {
             const isOnline = activeBuses.some(activeBus => activeBus.busId === bus.busId);
