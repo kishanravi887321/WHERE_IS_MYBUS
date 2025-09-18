@@ -1,4 +1,4 @@
-const API_BASE_URL = 'https://where-is-mybus.onrender.com/';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 export const authApi = {
   async register(userData) {
@@ -97,7 +97,7 @@ export const getAuthData = () => {
     user: user ? JSON.parse(user) : null
   };
 };
-
+// abcd
 export const clearAuthData = () => {
   localStorage.removeItem('accessToken');
   localStorage.removeItem('refreshToken');
