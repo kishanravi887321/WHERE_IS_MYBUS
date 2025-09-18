@@ -33,6 +33,11 @@ const busSchema = new Schema({
         required: true,
         trim: true
     },
+    secretKey:{
+        type:String,
+        required:true,
+        trim:true
+    },
     capacity: {
         type: Number,
         required: true,
