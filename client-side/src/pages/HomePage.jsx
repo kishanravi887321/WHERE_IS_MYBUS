@@ -80,7 +80,7 @@ const HomePage = () => {
       // Continue with logout even if API call fails
     }
     
-    // Clear auth data from Redux store
+    // Clear auth data from Redux store.
     console.log('Clearing Redux state');
     dispatch(logout());
     
