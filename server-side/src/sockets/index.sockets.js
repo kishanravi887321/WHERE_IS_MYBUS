@@ -41,7 +41,8 @@ export const initSocket = (server) => {
                     socket.disconnect(true);
                     return;
                 }
-                     socket.emit("identify:success"); 
+                     socket.emit("identify:success");
+                     socket.data.type="driver";
                     handleDriverConnection(io, socket);
                 } else if (type === "passenger") {
                     console.log(`👥 Identified as passenger: ${socket.id}`);
