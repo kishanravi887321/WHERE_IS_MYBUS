@@ -45,44 +45,63 @@ const startServer = async () => {
 };
 
 const check = async () => {
-  const client = redisClient();
- 
+  try {
+    const client = redisClient();
+    
+    // Ensure client is connected
+    if (!client.isOpen) {
+      await client.connect();
+    }
 
+    // fetch all keys
+    const keys = await client.keys("*");
 
-  // fetch all keys
-  const keys = await client.keys("*");
+    if (keys.length === 0) {
+      console.log("No keys found in Redis.");
+      return;
+    }
 
-  if (keys.length === 0) {
-    console.log("No keys found in Redis.");
-    return;
-  }
-
-  // fetch values for each key
-  for (const key of keys) {
-    const value = await client.get(key);  // ❗ use hgetall if it's a hash
-    console.log(`[${key} : ${value}]`);
+    // fetch values for each key
+    for (const key of keys) {
+      const value = await client.get(key);  // ❗ use hgetall if it's a hash
+      console.log(`[${key} : ${value}]`);
+    }
+  } catch (error) {
+    console.error('❌ Error in Redis check function:', error);
   }
 };
 
 startServer();
 
  
- const deleteAllKeys = async () => {
-   const client = redisClient();
-   const keys = await client.keys("*");
-   if (keys.length > 0) {
-       await client.del(keys);
-       console.log(`Deleted keys: ${keys.join(", ")}`);
-   } else {
-       console.log("No keys found to delete");
+const deleteAllKeys = async () => {
+   try {
+     const client = redisClient();
+     
+     // Ensure client is connected
+     if (!client.isOpen) {
+       await client.connect();
+     }
+     
+     const keys = await client.keys("*");
+     if (keys.length > 0) {
+         await client.del(keys);
+         console.log(`Deleted keys: ${keys.join(", ")}`);
+     } else {
+         console.log("No keys found to delete");
+     }
+   } catch (error) {
+     console.error('❌ Error deleting Redis keys:', error);
    }
 };
-(async () => {
-    try {
-        await deleteAllKeys();
-    } catch (err) {
-        console.error("❌ Redis test failed:", err);
-    }
-})();
+
+// Comment out the auto-run deleteAllKeys to prevent conflicts
+// (async () => {
+//     try {
+//         await deleteAllKeys();
+//     } catch (err) {
+//         console.error("❌ Redis test failed:", err);
+//     }
+// })();
 
 //

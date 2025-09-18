@@ -9,13 +9,20 @@ const REDIS_KEYS = {
 };
 
 // Helper functions to interact with Redis
-const getRedisClient = () => {
-    return redisClient();
+const getRedisClient = async () => {
+    const client = redisClient();
+    
+    // Ensure client is connected before returning
+    if (!client.isOpen) {
+        await client.connect();
+    }
+    
+    return client;
 };
 
 const setActivePassenger = async (socketId, passengerData) => {
     try {
-        const client = getRedisClient();
+        const client = await getRedisClient();
         await client.hSet(REDIS_KEYS.ACTIVE_PASSENGERS, socketId, JSON.stringify({
             ...passengerData,
             lastUpdate: new Date().toISOString()
@@ -28,7 +35,7 @@ const setActivePassenger = async (socketId, passengerData) => {
 
 const getActivePassenger = async (socketId) => {
     try {
-        const client = getRedisClient();
+        const client = await getRedisClient();
         const passengerData = await client.hGet(REDIS_KEYS.ACTIVE_PASSENGERS, socketId);
         return passengerData ? JSON.parse(passengerData) : null;
     } catch (error) {
@@ -39,7 +46,7 @@ const getActivePassenger = async (socketId) => {
 
 const hasActivePassenger = async (socketId) => {
     try {
-        const client = getRedisClient();
+        const client = await getRedisClient();
         return await client.hExists(REDIS_KEYS.ACTIVE_PASSENGERS, socketId);
     } catch (error) {
         console.error('❌ Error checking active passenger in Redis:', error);
@@ -49,7 +56,7 @@ const hasActivePassenger = async (socketId) => {
 
 const deleteActivePassenger = async (socketId) => {
     try {
-        const client = getRedisClient();
+        const client = await getRedisClient();
         await client.hDel(REDIS_KEYS.ACTIVE_PASSENGERS, socketId);
         console.log(`🗑️ Passenger ${socketId} removed from Redis cache`);
     } catch (error) {
@@ -59,7 +66,7 @@ const deleteActivePassenger = async (socketId) => {
 
 const getAllActivePassengers = async () => {
     try {
-        const client = getRedisClient();
+        const client = await getRedisClient();
         const passengersData = await client.hGetAll(REDIS_KEYS.ACTIVE_PASSENGERS);
         const result = [];
         for (const [socketId, data] of Object.entries(passengersData)) {

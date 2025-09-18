@@ -9,13 +9,20 @@ const REDIS_KEYS = {
 };
 
 // Helper functions to interact with Redis
-const getRedisClient = () => {
-    return redisClient();
+const getRedisClient = async () => {
+    const client = redisClient();
+    
+    // Ensure client is connected before returning
+    if (!client.isOpen) {
+        await client.connect();
+    }
+    
+    return client;
 };
 
 const setActiveBus = async (busId, busData) => {
     try {
-        const client = getRedisClient();
+        const client = await getRedisClient();
         await client.hSet(REDIS_KEYS.ACTIVE_BUSES, busId, JSON.stringify({
             ...busData,
             lastUpdate: new Date().toISOString()
@@ -28,7 +35,7 @@ const setActiveBus = async (busId, busData) => {
 
 const getActiveBus = async (busId) => {
     try {
-        const client = getRedisClient();
+        const client = await getRedisClient();
         const busData = await client.hGet(REDIS_KEYS.ACTIVE_BUSES, busId);
         return busData ? JSON.parse(busData) : null;
     } catch (error) {
@@ -39,7 +46,7 @@ const getActiveBus = async (busId) => {
 
 const hasActiveBus = async (busId) => {
     try {
-        const client = getRedisClient();
+        const client = await getRedisClient();
         return await client.hExists(REDIS_KEYS.ACTIVE_BUSES, busId);
     } catch (error) {
         console.error('❌ Error checking active bus in Redis:', error);
@@ -49,7 +56,7 @@ const hasActiveBus = async (busId) => {
 
 const deleteActiveBus = async (busId) => {
     try {
-        const client = getRedisClient();
+        const client = await getRedisClient();
         await client.hDel(REDIS_KEYS.ACTIVE_BUSES, busId);
         console.log(`🗑️ Bus ${busId} removed from Redis cache`);
     } catch (error) {
@@ -59,7 +66,7 @@ const deleteActiveBus = async (busId) => {
 
 const getAllActiveBuses = async () => {
     try {
-        const client = getRedisClient();
+        const client = await getRedisClient();
         const busesData = await client.hGetAll(REDIS_KEYS.ACTIVE_BUSES);
         const result = [];
         for (const [busId, data] of Object.entries(busesData)) {

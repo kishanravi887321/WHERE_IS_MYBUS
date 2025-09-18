@@ -651,10 +651,20 @@ export  const MakeTheBusActive = asyncHandler(async (req, res) => {
     //
 
     //  genrate the random token and store in the redis db
-const token = String(Math.floor(100000 + Math.random() * 900000)); // 6-digit OTP style
+    const token = String(Math.floor(100000 + Math.random() * 900000)); // 6-digit OTP style
 
-    const client = redisClient();
-    await client.setEx(`busToken:${bus.busId}`, 3600, token); //  toke
+    try {
+        const client = redisClient();
+        // Ensure client is connected before using
+        if (!client.isOpen) {
+            await client.connect();
+        }
+        await client.setEx(`busToken:${bus.busId}`, 3600, token); //  token expires in 1 hour
+        console.log(`✅ Token stored in Redis for bus ${bus.busId}`);
+    } catch (error) {
+        console.error('❌ Error storing token in Redis:', error);
+        throw new ApiError(500, "Failed to store authentication token");
+    }
 
     return res.status(200).json({ message: "Bus activated successfully" , token:token});
 });
