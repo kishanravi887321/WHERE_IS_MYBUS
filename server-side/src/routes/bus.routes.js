@@ -9,6 +9,7 @@ import {
     getActiveBusesStatus,
     searchBuses,
     getBusesByBoardingStop,
+    MakeTheBusActive,
     getBusesFromStopToStop
 } from "../controllers/bus.controllers.js";
 
@@ -20,6 +21,7 @@ router.route("/active").get(getActiveBusesStatus);
 router.route("/stop/:stopName").get(getBusesByBoardingStop);
 router.route("/route/:fromStop/:toStop").get(getBusesFromStopToStop);
 router.route("/").get(getAllBuses);
+router.route("/make-active").post(MakeTheBusActive);
 router.route("/:busId").get(getBusById);
 router.route("/:busId/location-history").get(getBusLocationHistory);
 

@@ -1,6 +1,7 @@
 import { Server } from "socket.io";
 import { handleDriverConnection } from "../sockets_services/bus.sockets_services.js";
 import { handleClientConnection } from "../sockets_services/client.sockets_services.js";
+import { redisClient } from "../db/redis.db.js";
 
 let io;
 
@@ -21,43 +22,60 @@ export const initSocket = (server) => {
         console.log(`🟢 New connection: ${socket.id}`);
 
         // Handle different types of connections based on client type
-        socket.on('identify', (data) => {
-            const { type } = data;
-            
-            if (type === 'driver') {
-                console.log(`🚌 Identified as driver: ${socket.id}`);
-                handleDriverConnection(io, socket);
-            } else if (type === 'passenger') {
-                console.log(`👥 Identified as passenger: ${socket.id}`);
-                handleClientConnection(io, socket);
-            } else {
-                console.log(`❓ Unknown client type: ${type} for ${socket.id}`);
-                socket.emit('error', { message: 'Please identify as driver or passenger' });
+        socket.on("identify", async (data) => {
+            try {
+                const { type, token, busId } = data;
+                const uniqueKey = `busToken:${busId}`;
+
+                // Use redisClient directly (not redisClient())
+                const client = redisClient();
+                const storedToken = await client.get(uniqueKey);
+
+                if (!storedToken || storedToken !== token) {
+                    console.log(`❌ Invalid token for ${socket.id}`);
+                    socket.emit("identify:error", { message: "Invalid token" });
+                    socket.disconnect(true);
+                    return;
+                }
+
+                if (type === "driver") {
+                    console.log(`🚌 Identified as driver: ${socket.id}`);
+                    handleDriverConnection(io, socket);
+                } else if (type === "passenger") {
+                    console.log(`👥 Identified as passenger: ${socket.id}`);
+                    handleClientConnection(io, socket);
+                } else {
+                    console.log(`❓ Unknown client type: ${type} for ${socket.id}`);
+                    socket.emit("error", { message: "Please identify as driver or passenger" });
+                }
+            } catch (err) {
+                console.error(`❌ Redis token check failed for ${socket.id}:`, err);
+                socket.emit("error", { message: "Server error while verifying token" });
             }
         });
 
-        // Handle connections that don't identify (assume passenger)
+        // Auto-identify as passenger if not identified within 5 sec
         let identificationTimer = setTimeout(() => {
             console.log(`👥 Auto-identifying as passenger: ${socket.id}`);
             handleClientConnection(io, socket);
         }, 5000);
 
         // Clear timer if client identifies
-        socket.on('identify', () => {
+        socket.on("identify", () => {
             clearTimeout(identificationTimer);
         });
 
         // Admin/monitoring endpoints
-        socket.on('admin:stats', () => {
-            if (socket.handshake.query.admin === 'true') {
+        socket.on("admin:stats", () => {
+            if (socket.handshake.query.admin === "true") {
                 const stats = {
                     totalConnections: io.sockets.sockets.size,
                     totalRooms: io.sockets.adapter.rooms.size,
                     timestamp: new Date().toISOString()
                 };
-                socket.emit('admin:stats:response', stats);
+                socket.emit("admin:stats:response", stats);
             } else {
-                socket.emit('error', { message: 'Admin access required' });
+                socket.emit("error", { message: "Admin access required" });
             }
         });
 
@@ -68,7 +86,7 @@ export const initSocket = (server) => {
         });
 
         // Error handling
-        socket.on('error', (error) => {
+        socket.on("error", (error) => {
             console.error(`❌ Socket error from ${socket.id}:`, error);
         });
     });
@@ -90,7 +108,7 @@ export const initSocket = (server) => {
 // Utility function to get socket instance
 export const getIO = () => {
     if (!io) {
-        throw new Error('Socket.IO not initialized');
+        throw new Error("Socket.IO not initialized");
     }
     return io;
 };

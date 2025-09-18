@@ -78,9 +78,9 @@ export const handleDriverConnection = (io, socket) => {
     // Driver joins with unique bus ID and driver key
     socket.on('driver:join', async (data) => {
         try {
-            const { busId, driverKey, driverInfo } = data;
-            
-            console.log(`🔑 Driver attempting to join bus ${busId} with key: ${driverKey}`);
+            const { busId,  driverInfo } = data;
+
+            console.log(`🔑 Driver attempting to join bus ${busId}`);
             
             // Validate bus exists and is active
             const bus = await Bus.findOne({ busId, isActive: true });
@@ -91,11 +91,7 @@ export const handleDriverConnection = (io, socket) => {
             
             // For demo purposes, using simple key validation
             // In production, use proper authentication
-            const expectedKey = "1234";
-            if (driverKey !== expectedKey) {
-                socket.emit('driver:error', { message: 'Invalid driver key' });
-                return;
-            }
+           
             
             // Check if another driver is already active for this bus
             const existingBusData = await getActiveBus(busId);
