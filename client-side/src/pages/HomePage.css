@@ -1,0 +1,816 @@
+/* HomePage.css */
+
+* {
+  box-sizing: border-box;
+}
+
+.home-page {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #fefefe 0%, #faf7f0 25%, #f8f4e8 50%, #f6f1e0 100%);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  position: relative;
+  animation: fadeIn 0.6s ease-out;
+}
+
+@keyframes fadeIn {
+  from { 
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to { 
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Header Styles */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.5rem;
+  background: white;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+  position: relative;
+  z-index: 100;
+}
+
+.menu-toggle {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+}
+
+.menu-toggle:hover {
+  background: #f8f9fa;
+}
+
+.hamburger-line {
+  width: 24px;
+  height: 3px;
+  background: #333;
+  border-radius: 2px;
+  transition: all 0.3s ease;
+}
+
+.header-logo .logo-text {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: #FF9B00;
+}
+
+/* Menu Panel Styles */
+.menu-panel {
+  position: fixed;
+  top: 0;
+  left: -320px;
+  width: 320px;
+  height: 100vh;
+  background: white;
+  box-shadow: 2px 0 20px rgba(0, 0, 0, 0.1);
+  z-index: 1000;
+  transition: left 0.3s ease;
+  overflow-y: auto;
+}
+
+.menu-panel.open {
+  left: 0;
+}
+
+.menu-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.5rem;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.menu-logo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.logo-icon {
+  font-size: 2rem;
+}
+
+.menu-app-name {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #FF9B00;
+}
+
+.close-menu {
+  background: none;
+  border: none;
+  font-size: 2rem;
+  cursor: pointer;
+  color: #666;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: all 0.3s ease;
+}
+
+.close-menu:hover {
+  background: #f8f9fa;
+  color: #333;
+}
+
+.menu-nav {
+  padding: 1rem 0;
+}
+
+.menu-item {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 1rem 1.5rem;
+  text-decoration: none;
+  color: #333;
+  transition: all 0.3s ease;
+  border: none;
+  background: none;
+  width: 100%;
+  text-align: left;
+}
+
+.menu-item:hover {
+  background: #f8f9fa;
+  color: #FF9B00;
+}
+
+.menu-icon {
+  font-size: 1.2rem;
+  width: 24px;
+  text-align: center;
+}
+
+.menu-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 999;
+  opacity: 1;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Main Content */
+.main-content {
+  padding: 2rem 1.5rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* Hero Section */
+.hero-section {
+  text-align: center;
+  margin-bottom: 4rem;
+  animation: slideUp 0.8s ease-out 0.2s both;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.hero-logo {
+  margin-bottom: 4rem;
+}
+
+.app-logo {
+  font-size: 5rem;
+  margin-bottom: 1.5rem;
+  display: block;
+  animation: bounce 2s ease-in-out infinite;
+}
+
+@keyframes bounce {
+  0%, 20%, 50%, 80%, 100% {
+    transform: translateY(0);
+  }
+  40% {
+    transform: translateY(-10px);
+  }
+  60% {
+    transform: translateY(-5px);
+  }
+}
+
+.app-title {
+  font-size: 4rem;
+  font-weight: 800;
+  color: #333;
+  margin-bottom: 1rem;
+  background: linear-gradient(135deg, #FF9B00 0%, #FFC900 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  letter-spacing: -2px;
+}
+
+.app-subtitle {
+  font-size: 1.3rem;
+  color: #666;
+  margin-bottom: 0;
+  font-weight: 400;
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Search Form */
+.search-form-container {
+  max-width: 800px;
+  margin: 0 auto 4rem auto;
+}
+
+.search-form {
+  padding: 0;
+  background: transparent;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.search-inputs {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 2rem;
+  align-items: end;
+  margin-bottom: 2rem;
+}
+
+.input-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.input-label {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 0.8rem;
+  text-align: left;
+}
+
+.location-input {
+  padding: 20px 24px;
+  border: 3px solid #e9ecef;
+  border-radius: 16px;
+  font-size: 1.2rem;
+  color: #000;
+  transition: all 0.3s ease;
+  background: white;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.location-input:focus {
+  outline: none;
+  border-color: #FF9B00;
+  background: white;
+  box-shadow: 0 0 0 4px rgba(255, 155, 0, 0.15), 0 8px 24px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
+}
+
+.location-input:hover:not(:focus) {
+  border-color: #FFC900;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+}
+
+.swap-button {
+  background: linear-gradient(135deg, #FF9B00 0%, #FFC900 100%);
+  border: none;
+  border-radius: 50%;
+  width: 64px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin-bottom: 0;
+  box-shadow: 0 4px 12px rgba(255, 155, 0, 0.3);
+  position: relative;
+  overflow: hidden;
+}
+
+.swap-button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.5s;
+}
+
+.swap-button:hover::before {
+  left: 100%;
+}
+
+.swap-button:hover {
+  transform: rotate(180deg) scale(1.1);
+  box-shadow: 0 8px 20px rgba(255, 155, 0, 0.4);
+}
+
+.swap-icon {
+  font-size: 1.8rem;
+  font-weight: bold;
+}
+
+.date-group {
+  margin-bottom: 2.5rem;
+}
+
+.date-input {
+  padding: 20px 24px;
+  border: 3px solid #e9ecef;
+  border-radius: 16px;
+  font-size: 1.2rem;
+  color: #000;
+  transition: all 0.3s ease;
+  background: white;
+  width: 100%;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.date-input:focus {
+  outline: none;
+  border-color: #FF9B00;
+  background: white;
+  box-shadow: 0 0 0 4px rgba(255, 155, 0, 0.15), 0 8px 24px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
+}
+
+.date-input:hover:not(:focus) {
+  border-color: #FFC900;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+}
+
+.find-buses-btn {
+  width: 100%;
+  padding: 24px 32px;
+  background: linear-gradient(135deg, #FF9B00 0%, #FFC900 100%);
+  border: none;
+  border-radius: 16px;
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: white;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  box-shadow: 0 6px 20px rgba(255, 155, 0, 0.3);
+  position: relative;
+  overflow: hidden;
+}
+
+.find-buses-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.5s;
+}
+
+.find-buses-btn:hover::before {
+  left: 100%;
+}
+
+.find-buses-btn:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 32px rgba(255, 155, 0, 0.4);
+}
+
+.find-buses-btn:active {
+  transform: translateY(-1px);
+}
+
+.btn-icon, .btn-search-icon {
+  font-size: 1.4rem;
+}
+
+/* School Bus Tracking Card */
+.school-tracking-section {
+  margin-top: 4rem;
+  display: flex;
+  justify-content: center;
+  animation: slideUp 0.8s ease-out 0.4s both;
+}
+
+.school-bus-card {
+  background: linear-gradient(135deg, #FFE100 0%, #FFC900 50%, #FF9B00 100%);
+  padding: 3rem;
+  border-radius: 24px;
+  box-shadow: 0 15px 40px rgba(255, 155, 0, 0.2);
+  max-width: 900px;
+  width: 100%;
+  cursor: pointer;
+  transition: all 0.4s ease;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 2rem;
+  align-items: center;
+  border: 4px solid transparent;
+  position: relative;
+  overflow: hidden;
+}
+
+.school-bus-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+  transition: left 0.6s;
+}
+
+.school-bus-card:hover::before {
+  left: 100%;
+}
+
+.school-bus-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 25px 60px rgba(255, 155, 0, 0.3);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.card-visual {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+.card-icon {
+  font-size: 4rem;
+  background: white;
+  padding: 1.5rem;
+  border-radius: 20px;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+}
+
+.school-bus-card:hover .card-icon {
+  transform: scale(1.1) rotate(5deg);
+}
+
+.card-decorative {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.deco-icon {
+  font-size: 1.2rem;
+  background: rgba(255, 255, 255, 0.2);
+  padding: 0.5rem;
+  border-radius: 8px;
+  backdrop-filter: blur(10px);
+}
+
+.card-content {
+  flex: 1;
+  color: white;
+}
+
+.card-title {
+  font-size: 2.2rem;
+  font-weight: 800;
+  margin-bottom: 1rem;
+  color: white;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.card-description {
+  font-size: 1.1rem;
+  margin-bottom: 1.5rem;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.card-features {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.feature-tag {
+  background: rgba(255, 255, 255, 0.2);
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.card-action {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  color: white;
+}
+
+.action-text {
+  font-size: 1rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.card-arrow {
+  font-size: 2rem;
+  transition: all 0.3s ease;
+  background: rgba(255, 255, 255, 0.2);
+  padding: 0.8rem 1rem;
+  border-radius: 12px;
+  backdrop-filter: blur(10px);
+}
+
+.school-bus-card:hover .card-arrow {
+  transform: translateX(6px) scale(1.1);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .main-content {
+    padding: 2rem 1rem;
+  }
+
+  .app-title {
+    font-size: 2.8rem;
+    letter-spacing: -1px;
+  }
+
+  .app-subtitle {
+    font-size: 1.1rem;
+    padding: 0 1rem;
+  }
+
+  .search-form-container {
+    margin-bottom: 3rem;
+  }
+
+  .search-inputs {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+
+  .swap-button {
+    width: 100%;
+    height: 56px;
+    border-radius: 16px;
+    transform: rotate(90deg);
+  }
+
+  .swap-button:hover {
+    transform: rotate(270deg) scale(1.05);
+  }
+
+  .school-bus-card {
+    grid-template-columns: 1fr;
+    text-align: center;
+    padding: 2.5rem 2rem;
+    gap: 2rem;
+  }
+
+  .card-visual {
+    order: 1;
+  }
+
+  .card-content {
+    order: 2;
+  }
+
+  .card-action {
+    order: 3;
+  }
+
+  .card-icon {
+    font-size: 3.5rem;
+    padding: 1.2rem;
+  }
+
+  .card-title {
+    font-size: 1.8rem;
+  }
+
+  .card-description {
+    font-size: 1rem;
+  }
+
+  .card-arrow {
+    transform: rotate(90deg);
+  }
+
+  .school-bus-card:hover .card-arrow {
+    transform: rotate(90deg) translateX(6px) scale(1.1);
+  }
+
+  .card-features {
+    justify-content: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .header {
+    padding: 1rem;
+  }
+
+  .menu-panel {
+    width: 280px;
+    left: -280px;
+  }
+
+  .main-content {
+    padding: 1.5rem 0.75rem;
+  }
+
+  .app-logo {
+    font-size: 4rem;
+  }
+
+  .app-title {
+    font-size: 2.2rem;
+  }
+
+  .app-subtitle {
+    font-size: 1rem;
+    padding: 0 0.5rem;
+  }
+
+  .search-form-container {
+    margin-bottom: 2.5rem;
+  }
+
+  .location-input, .date-input {
+    padding: 18px 20px;
+    font-size: 1.1rem;
+  }
+
+  .input-label {
+    font-size: 1rem;
+  }
+
+  .find-buses-btn {
+    padding: 20px 24px;
+    font-size: 1.2rem;
+  }
+
+  .school-bus-card {
+    padding: 2rem 1.5rem;
+    margin: 0 0.5rem;
+  }
+
+  .card-title {
+    font-size: 1.6rem;
+  }
+
+  .card-description {
+    font-size: 0.95rem;
+  }
+
+  .card-features {
+    gap: 0.5rem;
+  }
+
+  .feature-tag {
+    font-size: 0.8rem;
+    padding: 0.4rem 0.8rem;
+  }
+}
+
+/* Accessibility */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Focus states for keyboard navigation */
+.menu-toggle:focus,
+.find-buses-btn:focus,
+.school-bus-card:focus {
+  outline: 2px solid #FF9B00;
+  outline-offset: 2px;
+}
+
+/* Custom Sidebar Styles */
+.sidebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 300px;
+  height: 100vh;
+  background-color: white;
+  box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+  z-index: 1000;
+  transform: translateX(-100%);
+  transition: transform 0.3s ease-out;
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar-open {
+  transform: translateX(0);
+}
+
+.sidebar-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 999;
+  backdrop-filter: blur(4px);
+}
+
+.sidebar-header {
+  padding: 1rem;
+  border-bottom: 1px solid #e9ecef;
+  background-color: white;
+}
+
+.sidebar-content {
+  padding: 1rem;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.sidebar-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  color: #333;
+}
+
+.sidebar-item:hover {
+  background-color: #f8f9fa;
+}
+
+.sidebar-item:focus {
+  outline: 2px solid #FF9B00;
+  outline-offset: 2px;
+  background-color: #f8f9fa;
+}
+
+.sidebar-item.logout-item {
+  margin-top: auto;
+  border-top: 1px solid #e9ecef;
+  color: #dc3545;
+}
+
+.sidebar-item.logout-item:hover {
+  background-color: #f8d7da;
+  color: #721c24;
+}
+
+.sidebar-item.logout-item:focus {
+  outline: 2px solid #dc3545;
+  outline-offset: 2px;
+  background-color: #f8d7da;
+}
+
+/* Ensure AppShell header stays below sidebar */
+.mantine-AppShell-header {
+  z-index: 100 !important;
+}
