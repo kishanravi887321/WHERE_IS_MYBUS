@@ -5,6 +5,7 @@ import ApiError from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { getActiveBuses, isDriverOnline } from "../sockets_services/bus.sockets_services.js";
 import { getBusPassengerCounts } from "../sockets_services/client.sockets_services.js";
+import { redisClient } from "../db/redis.db.js";
 
 // Create a new bus
 const createBus = asyncHandler(async (req, res) => {
@@ -631,15 +632,15 @@ export const getAvailableBusesFromStopToStop = async (fromStop, toStop) => {
 };
 
 export  const MakeTheBusActive = asyncHandler(async (req, res) => {
-    const { busId,secreatKey } = req.body
-
+    const { busId,secretKey } = req.body
+    console.log(req.body);
     // Find the bus by ID and update its status
-    const bus = await Bus.findById(busId);
+    const bus = await Bus.findOne({ busId });
     if (!bus) {
         return res.status(404).json({ message: "Bus not found" });
     }
-
-    if(bus.secretKey !== secreatKey){
+  
+    if (bus.secretKey !== secretKey) {
         return res.status(403).json({ message: "Invalid secret key" });
     }
     ///  i have to now user the redis for cache
@@ -647,7 +648,15 @@ export  const MakeTheBusActive = asyncHandler(async (req, res) => {
     bus.isActive = true;
     await bus.save();
 
-    return res.status(200).json({ message: "Bus activated successfully" });
+    //
+
+    //  genrate the random token and store in the redis db
+const token = String(Math.floor(100000 + Math.random() * 900000)); // 6-digit OTP style
+
+    const client = redisClient();
+    await client.setEx(`busToken:${bus.busId}`, 3600, token); //  toke
+
+    return res.status(200).json({ message: "Bus activated successfully" , token:token});
 });
 
 export {
@@ -662,3 +671,6 @@ export {
     getBusesByBoardingStop,
     getBusesFromStopToStop
 };
+
+
+//

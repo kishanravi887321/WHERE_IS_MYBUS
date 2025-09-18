@@ -4,7 +4,9 @@ import http from "http";
 import {app} from "./app.js"; // Express app
 import connectDB from "./db/index.db.js";
 import  {initSocket} from "./sockets/index.sockets.js";
-import { connectRedis } from "./db/redis.db.js";
+import { connectRedis ,redisClient} from "./db/redis.db.js";
+
+
 
 dotenv.config({ path: "../.env" });
 
@@ -21,6 +23,8 @@ const startServer = async () => {
     await connectDB();
     console.log("✅ MongoDB connected");
     await connectRedis();
+    await check();
+    console.log("✅ Redis connected");
 
     // 2️⃣ Create HTTP server (bridge between Express + Socket.IO)
     const server = http.createServer(app);
@@ -38,4 +42,45 @@ const startServer = async () => {
   }
 };
 
+const check = async () => {
+  const client = redisClient();
+ 
+
+
+  // fetch all keys
+  const keys = await client.keys("*");
+
+  if (keys.length === 0) {
+    console.log("No keys found in Redis.");
+    return;
+  }
+
+  // fetch values for each key
+  for (const key of keys) {
+    const value = await client.get(key);  // ❗ use hgetall if it's a hash
+    console.log(`[${key} : ${value}]`);
+  }
+};
+
 startServer();
+
+ 
+ const deleteAllKeys = async () => {
+   const client = redisClient();
+   const keys = await client.keys("*");
+   if (keys.length > 0) {
+       await client.del(keys);
+       console.log(`Deleted keys: ${keys.join(", ")}`);
+   } else {
+       console.log("No keys found to delete");
+   }
+};
+(async () => {
+    try {
+        await deleteAllKeys();
+    } catch (err) {
+        console.error("❌ Redis test failed:", err);
+    }
+})();
+
+//
