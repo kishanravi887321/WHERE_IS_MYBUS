@@ -44,6 +44,8 @@ const startServer = async () => {
 
 const check = async () => {
   const client = redisClient();
+ 
+
 
   // fetch all keys
   const keys = await client.keys("*");
@@ -59,6 +61,26 @@ const check = async () => {
     console.log(`[${key} : ${value}]`);
   }
 };
+
 startServer();
+
+ 
+ const deleteAllKeys = async () => {
+   const client = redisClient();
+   const keys = await client.keys("*");
+   if (keys.length > 0) {
+       await client.del(keys);
+       console.log(`Deleted keys: ${keys.join(", ")}`);
+   } else {
+       console.log("No keys found to delete");
+   }
+};
+(async () => {
+    try {
+        await deleteAllKeys();
+    } catch (err) {
+        console.error("❌ Redis test failed:", err);
+    }
+})();
 
 //

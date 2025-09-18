@@ -1,6 +1,10 @@
 import { io } from "socket.io-client";
 
-const socket = io("https://where-is-mybus.onrender.com", {
+// const socket = io("https://where-is-mybus.onrender.com", {
+//   transports: ["websocket"]
+// });
+
+const socket = io("http://localhost:5001", {
   transports: ["websocket"]
 });
 

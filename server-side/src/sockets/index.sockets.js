@@ -25,9 +25,13 @@ export const initSocket = (server) => {
         socket.on("identify", async (data) => {
             try {
                 const { type, token, busId } = data;
-                const uniqueKey = `busToken:${busId}`;
+                
 
-                // Use redisClient directly (not redisClient())
+                if (type === "driver") {
+                    console.log(`🚌 Identified as driver: ${socket.id}`);
+
+                    const uniqueKey = `busToken:${busId}`;
+
                 const client = redisClient();
                 const storedToken = await client.get(uniqueKey);
 
@@ -37,9 +41,7 @@ export const initSocket = (server) => {
                     socket.disconnect(true);
                     return;
                 }
-
-                if (type === "driver") {
-                    console.log(`🚌 Identified as driver: ${socket.id}`);
+                     socket.emit("identify:success"); 
                     handleDriverConnection(io, socket);
                 } else if (type === "passenger") {
                     console.log(`👥 Identified as passenger: ${socket.id}`);

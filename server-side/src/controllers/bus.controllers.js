@@ -654,7 +654,7 @@ export  const MakeTheBusActive = asyncHandler(async (req, res) => {
 const token = String(Math.floor(100000 + Math.random() * 900000)); // 6-digit OTP style
 
     const client = redisClient();
-    await client.setEx(`busToken:${bus.busId}`, 60*5, token); //  toke
+    await client.setEx(`busToken:${bus.busId}`, 3600, token); //  toke
 
     return res.status(200).json({ message: "Bus activated successfully" , token:token});
 });
