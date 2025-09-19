@@ -380,13 +380,27 @@ export function LeafletMap({ selectedBus, busLocation, onLocationUpdate }: Leafl
             const route = e.routes[0]
             console.log('Route summary:', route.summary)
             
-            // Fit bounds to show the entire route
+            // Fit bounds to show the entire route with proper validation
             try {
-              const bounds = L.latLngBounds(waypoints)
-              if (bounds.isValid()) {
-                map.fitBounds(bounds.pad(0.1))
+              // Validate waypoints before creating bounds
+              const validWaypoints = waypoints.filter(wp => 
+                wp && wp.getLatLng && 
+                typeof wp.getLatLng().lat === 'number' && 
+                typeof wp.getLatLng().lng === 'number' &&
+                !isNaN(wp.getLatLng().lat) && 
+                !isNaN(wp.getLatLng().lng)
+              )
+              
+              if (validWaypoints.length >= 2) {
+                const bounds = L.latLngBounds(validWaypoints.map(wp => wp.getLatLng()))
+                if (bounds && bounds.isValid && bounds.isValid()) {
+                  map.fitBounds(bounds.pad(0.1), { maxZoom: 16 })
+                } else {
+                  console.warn('Invalid route bounds, using default view')
+                  map.setView([28.6139, 77.2090], 12)
+                }
               } else {
-                console.warn('Invalid route bounds, using default view')
+                console.warn('Not enough valid waypoints for bounds fitting')
                 map.setView([28.6139, 77.2090], 12)
               }
             } catch (error) {
@@ -428,65 +442,108 @@ export function LeafletMap({ selectedBus, busLocation, onLocationUpdate }: Leafl
     }
   }
 
-  // Fallback route creation
+  // Fallback route creation with proper validation
   const createFallbackRoute = (waypoints: any[], map: any, L: any) => {
     console.log('Creating fallback route with simple line')
     
     try {
-      // Create simple polyline
-      const latLngs = waypoints.map((wp: any) => [wp.lat, wp.lng])
+      // Validate waypoints first
+      const validWaypoints = waypoints.filter(wp => 
+        wp && 
+        typeof wp.lat === 'number' && 
+        typeof wp.lng === 'number' && 
+        !isNaN(wp.lat) && 
+        !isNaN(wp.lng) &&
+        wp.lat >= -90 && wp.lat <= 90 &&
+        wp.lng >= -180 && wp.lng <= 180
+      )
       
-      busRouteLayerRef.current = L.polyline(latLngs, {
+      if (validWaypoints.length < 2) {
+        console.warn('Not enough valid waypoints for fallback route')
+        return
+      }
+      
+      console.log('Valid waypoints for fallback:', validWaypoints)
+      
+      // Create simple polyline with validated coordinates
+      const latLngs = validWaypoints.map((wp: any) => [wp.lat, wp.lng])
+      
+      // Validate latLngs array
+      const validLatLngs = latLngs.filter(coords => 
+        Array.isArray(coords) && 
+        coords.length === 2 && 
+        typeof coords[0] === 'number' && 
+        typeof coords[1] === 'number' &&
+        !isNaN(coords[0]) && !isNaN(coords[1])
+      )
+      
+      if (validLatLngs.length < 2) {
+        console.warn('Not enough valid coordinates for polyline')
+        return
+      }
+      
+      busRouteLayerRef.current = L.polyline(validLatLngs, {
         color: '#3b82f6',
         weight: 4,
         opacity: 0.8,
         dashArray: '5, 5'
       }).addTo(map)
 
-      // Add markers manually
-      waypoints.forEach((waypoint: any, i: number) => {
-        const isStart = i === 0
-        const isEnd = i === waypoints.length - 1
-        
-        const marker = L.marker([waypoint.lat, waypoint.lng], {
-          icon: L.divIcon({
-            className: isStart ? 'route-marker start-marker' : isEnd ? 'route-marker end-marker' : 'route-marker stop-marker',
-            html: `
-              <div style="
-                background-color: ${isStart ? '#22c55e' : isEnd ? '#ef4444' : '#3b82f6'};
-                width: ${isStart || isEnd ? '20px' : '16px'};
-                height: ${isStart || isEnd ? '20px' : '16px'};
-                border-radius: 50%;
-                border: ${isStart || isEnd ? '3px' : '2px'} solid white;
-                box-shadow: 0 0 ${isStart || isEnd ? '10px' : '8px'} rgba(${isStart ? '34, 197, 94' : isEnd ? '239, 68, 68' : '59, 130, 246'}, 0.6);
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                font-size: ${isStart || isEnd ? '10px' : '8px'};
-                color: white;
-                font-weight: bold;
-              ">${isStart ? '🚏' : isEnd ? '🏁' : i}</div>
-            `,
-            iconSize: [isStart || isEnd ? 26 : 20, isStart || isEnd ? 26 : 20],
-            iconAnchor: [isStart || isEnd ? 13 : 10, isStart || isEnd ? 13 : 10]
-          })
-        }).addTo(map)
+      // Add markers manually with validation
+      validWaypoints.forEach((waypoint: any, i: number) => {
+        try {
+          const isStart = i === 0
+          const isEnd = i === validWaypoints.length - 1
+          
+          const marker = L.marker([waypoint.lat, waypoint.lng], {
+            icon: L.divIcon({
+              className: isStart ? 'route-marker start-marker' : isEnd ? 'route-marker end-marker' : 'route-marker stop-marker',
+              html: `
+                <div style="
+                  background-color: ${isStart ? '#22c55e' : isEnd ? '#ef4444' : '#3b82f6'};
+                  width: ${isStart || isEnd ? '20px' : '16px'};
+                  height: ${isStart || isEnd ? '20px' : '16px'};
+                  border-radius: 50%;
+                  border: ${isStart || isEnd ? '3px' : '2px'} solid white;
+                  box-shadow: 0 0 ${isStart || isEnd ? '10px' : '8px'} rgba(${isStart ? '34, 197, 94' : isEnd ? '239, 68, 68' : '59, 130, 246'}, 0.6);
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  font-size: ${isStart || isEnd ? '10px' : '8px'};
+                  color: white;
+                  font-weight: bold;
+                ">${isStart ? '🚏' : isEnd ? '🏁' : i}</div>
+              `,
+              iconSize: [isStart || isEnd ? 26 : 20, isStart || isEnd ? 26 : 20],
+              iconAnchor: [isStart || isEnd ? 13 : 10, isStart || isEnd ? 13 : 10]
+            })
+          }).addTo(map)
 
-        marker.bindPopup(isStart ? 'Start Point' : isEnd ? 'End Point' : `Stop ${i}`)
-        routeMarkersRef.current.push(marker)
+          marker.bindPopup(isStart ? 'Start Point' : isEnd ? 'End Point' : `Stop ${i}`)
+          routeMarkersRef.current.push(marker)
+        } catch (markerError) {
+          console.error('Error creating marker:', markerError)
+        }
       })
 
-      // Fit bounds
+      // Fit bounds with proper validation
       try {
-        const bounds = L.latLngBounds(waypoints)
-        if (bounds.isValid()) {
-          map.fitBounds(bounds.pad(0.1))
+        if (validLatLngs.length >= 2) {
+          const bounds = L.latLngBounds(validLatLngs)
+          if (bounds && bounds.isValid && bounds.isValid()) {
+            // Add padding and ensure bounds are reasonable
+            const paddedBounds = bounds.pad(0.1)
+            map.fitBounds(paddedBounds, { maxZoom: 16 })
+          } else {
+            console.warn('Invalid fallback bounds, using default view')
+            map.setView([28.6139, 77.2090], 12)
+          }
         } else {
-          console.warn('Invalid fallback bounds, using default view')
+          console.warn('Not enough coordinates for bounds fitting')
           map.setView([28.6139, 77.2090], 12)
         }
-      } catch (error) {
-        console.error('Error fitting fallback bounds:', error)
+      } catch (boundsError) {
+        console.error('Error fitting fallback bounds:', boundsError)
         map.setView([28.6139, 77.2090], 12)
       }
       
@@ -494,6 +551,8 @@ export function LeafletMap({ selectedBus, busLocation, onLocationUpdate }: Leafl
       
     } catch (error) {
       console.error('Error creating fallback route:', error)
+      // Fallback to default view if everything fails
+      map.setView([28.6139, 77.2090], 12)
     }
   }
 
