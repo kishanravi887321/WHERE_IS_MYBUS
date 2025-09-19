@@ -1,0 +1,849 @@
+# WHERE IS MY BUS - API ROUTES DOCUMENTATION
+
+## Server Information
+- **Base URL**: http://localhost:5001
+- **Server Framework**: Express.js with Socket.IO
+- **Database**: MongoDB + Redis Cache
+- **Authentication**: JWT (Bearer Token)
+
+---
+
+## 🚌 REST API ROUTES
+
+### **User Management Routes** (`/api/users`)
+
+#### 1. Register User
+- **Endpoint**: `POST /api/users/register`
+- **Authentication**: None
+- **Request Body**:
+```json
+{
+  "username": "string",
+  "email": "string", 
+  "password": "string"
+}
+```
+- **Response**: 
+```json
+{
+  "statusCode": 201,
+  "data": {
+    "userLoggedIn": {
+      "_id": "string",
+      "username": "string",
+      "email": "string"
+    },
+    "accessToken": "string",
+    "refreshToken": "string"
+  },
+  "message": "User registered and logged in successfully!",
+  "success": true
+}
+```
+
+#### 2. User Login
+- **Endpoint**: `POST /api/users/login`
+- **Authentication**: None
+- **Request Body**:
+```json
+{
+  "email": "string",
+  "password": "string"
+}
+```
+- **Response**:
+```json
+{
+  "statusCode": 200,
+  "data": {
+    "userLoggedIn": {
+      "_id": "string",
+      "username": "string", 
+      "email": "string"
+    },
+    "accessToken": "string",
+    "refreshToken": "string"
+  },
+  "message": "User logged in successfully!",
+  "success": true
+}
+```
+
+#### 3. Refresh Access Token
+- **Endpoint**: `POST /api/users/refresh-token`
+- **Authentication**: Refresh Token (cookie or body)
+- **Request Body**:
+```json
+{
+  "refreshToken": "string" // Optional if sent via cookie
+}
+```
+- **Response**:
+```json
+{
+  "statusCode": 200,
+  "data": {
+    "accessToken": "string",
+    "refreshToken": "string"
+  },
+  "message": "Access token refreshed successfully",
+  "success": true
+}
+```
+
+#### 4. User Logout
+- **Endpoint**: `POST /api/users/logout`
+- **Authentication**: Bearer Token Required
+- **Request Body**: None
+- **Response**:
+```json
+{
+  "statusCode": 200,
+  "data": {},
+  "message": "User logged out successfully",
+  "success": true
+}
+```
+
+#### 5. Change Password
+- **Endpoint**: `PUT /api/users/changepassword`
+- **Authentication**: Bearer Token Required
+- **Request Body**:
+```json
+{
+  "oldpassword": "string",
+  "newpassword": "string"
+}
+```
+- **Response**:
+```json
+{
+  "statusCode": 200,
+  "data": null,
+  "message": "Password successfully changed",
+  "success": true
+}
+```
+
+#### 6. Test Route (Doctor)
+- **Endpoint**: `GET /api/users/doctor/`
+- **Authentication**: None
+- **Response**: "Doctor route is working"
+
+---
+
+### **Bus Management Routes** (`/api/buses`)
+
+#### 1. Create Bus
+- **Endpoint**: `POST /api/buses`
+- **Authentication**: None (Admin route - can add auth middleware later)
+- **Request Body**:
+```json
+{
+  "ownerEmail": "string",
+  "busId": "string",
+  "secretKey": "string",
+  "busNumber": "string",
+  "routeName": "string",
+  "driverName": "string",
+  "driverPhone": "string",
+  "capacity": "number",
+  "route": {
+    "stops": [
+      {
+        "name": "string",
+        "latitude": "number",
+        "longitude": "number",
+        "order": "number"
+      }
+    ]
+  }
+}
+```
+- **Response**:
+```json
+{
+  "statusCode": 201,
+  "data": {
+    "_id": "string",
+    "ownerEmail": "string",
+    "busId": "string",
+    "busNumber": "string",
+    "routeName": "string",
+    "driverName": "string",
+    "driverPhone": "string",
+    "capacity": "number",
+    "route": "object",
+    "isActive": "boolean",
+    "createdAt": "string",
+    "updatedAt": "string"
+  },
+  "message": "Bus created successfully",
+  "success": true
+}
+```
+
+#### 2. Get All Buses
+- **Endpoint**: `GET /api/buses`
+- **Authentication**: None
+- **Query Parameters**:
+  - `page`: number (default: 1)
+  - `limit`: number (default: 10)
+  - `isActive`: boolean
+  - `routeName`: string (search)
+- **Response**:
+```json
+{
+  "statusCode": 200,
+  "data": {
+    "buses": [
+      {
+        "busId": "string",
+        "busNumber": "string",
+        "routeName": "string",
+        "driverName": "string",
+        "capacity": "number",
+        "isActive": "boolean",
+        "isDriverOnline": "boolean",
+        "connectedPassengers": "number",
+        "route": "object"
+      }
+    ],
+    "currentPage": "number",
+    "totalPages": "number",
+    "totalBuses": "number"
+  },
+  "message": "Buses retrieved successfully",
+  "success": true
+}
+```
+
+#### 3. Get Bus by ID
+- **Endpoint**: `GET /api/buses/:busId`
+- **Authentication**: None
+- **Response**:
+```json
+{
+  "statusCode": 200,
+  "data": {
+    "busId": "string",
+    "busNumber": "string",
+    "routeName": "string",
+    "driverName": "string",
+    "capacity": "number",
+    "isActive": "boolean",
+    "isDriverOnline": "boolean",
+    "connectedPassengers": "number",
+    "latestLocation": {
+      "location": {
+        "latitude": "number",
+        "longitude": "number"
+      },
+      "speed": "number",
+      "heading": "number",
+      "lastUpdated": "string"
+    },
+    "route": "object"
+  },
+  "message": "Bus details retrieved successfully",
+  "success": true
+}
+```
+
+#### 4. Update Bus
+- **Endpoint**: `PUT /api/buses/:busId`
+- **Authentication**: None (Admin route)
+- **Request Body**: Same as create bus (partial updates allowed)
+- **Response**:
+```json
+{
+  "statusCode": 200,
+  "data": {
+    // Updated bus object
+  },
+  "message": "Bus updated successfully",
+  "success": true
+}
+```
+
+#### 5. Delete/Deactivate Bus
+- **Endpoint**: `DELETE /api/buses/:busId`
+- **Authentication**: None (Admin route)
+- **Query Parameters**:
+  - `permanent`: boolean (default: false)
+- **Response**:
+```json
+{
+  "statusCode": 200,
+  "data": null,
+  "message": "Bus deleted permanently" | "Bus deactivated successfully",
+  "success": true
+}
+```
+
+#### 6. Get Bus Location History
+- **Endpoint**: `GET /api/buses/:busId/location-history`
+- **Authentication**: None
+- **Query Parameters**:
+  - `hours`: number (default: 24)
+  - `limit`: number (default: 100)
+- **Response**:
+```json
+{
+  "statusCode": 200,
+  "data": {
+    "busId": "string",
+    "locations": [
+      {
+        "location": {
+          "latitude": "number",
+          "longitude": "number"
+        },
+        "speed": "number",
+        "heading": "number",
+        "createdAt": "string"
+      }
+    ],
+    "timeRange": "string",
+    "count": "number"
+  },
+  "message": "Location history retrieved successfully",
+  "success": true
+}
+```
+
+#### 7. Get Active Buses Status
+- **Endpoint**: `GET /api/buses/active`
+- **Authentication**: None
+- **Response**:
+```json
+{
+  "statusCode": 200,
+  "data": {
+    "activeBuses": [
+      {
+        "busId": "string",
+        "busNumber": "string",
+        "routeName": "string",
+        "driverInfo": "object",
+        "lastUpdate": "string",
+        "connectedPassengers": "number",
+        "currentLocation": {
+          "location": {
+            "latitude": "number",
+            "longitude": "number"
+          },
+          "speed": "number",
+          "lastUpdated": "string"
+        }
+      }
+    ],
+    "totalActiveBuses": "number",
+    "timestamp": "string"
+  },
+  "message": "Active buses status retrieved successfully",
+  "success": true
+}
+```
+
+#### 8. Search Buses
+- **Endpoint**: `GET /api/buses/search`
+- **Authentication**: None
+- **Query Parameters**:
+  - `query`: string (search term)
+  - `latitude`: number (for location-based search)
+  - `longitude`: number (for location-based search)
+  - `radius`: number (default: 5 km)
+- **Response**:
+```json
+{
+  "statusCode": 200,
+  "data": {
+    "buses": [
+      {
+        "busId": "string",
+        "busNumber": "string",
+        "routeName": "string",
+        "distance": "number", // Only for location-based search
+        "currentLocation": "object", // Only for location-based search
+        "lastUpdated": "string"
+      }
+    ],
+    "searchQuery": "string",
+    "location": "object",
+    "count": "number"
+  },
+  "message": "Bus search completed successfully",
+  "success": true
+}
+```
+
+#### 9. Get Buses by Boarding Stop
+- **Endpoint**: `GET /api/buses/stop/:stopName`
+- **Authentication**: None
+- **Query Parameters**:
+  - `includeDriverStatus`: boolean (default: false)
+- **Response**:
+```json
+{
+  "statusCode": 200,
+  "data": {
+    "stopName": "string",
+    "availableBuses": [
+      {
+        "busId": "string",
+        "busNumber": "string",
+        "routeName": "string",
+        "driverName": "string",
+        "capacity": "number",
+        "isDriverOnline": "boolean", // If includeDriverStatus=true
+        "connectedPassengers": "number", // If includeDriverStatus=true
+        "boardingStop": {
+          "name": "string",
+          "latitude": "number",
+          "longitude": "number",
+          "order": "number",
+          "stopsRemaining": "number"
+        }
+      }
+    ],
+    "totalBuses": "number",
+    "searchTimestamp": "string"
+  },
+  "message": "Found X buses passing through {stopName}",
+  "success": true
+}
+```
+
+#### 10. Get Buses from Stop to Stop
+- **Endpoint**: `GET /api/buses/route/:fromStop/:toStop`
+- **Authentication**: None
+- **Query Parameters**:
+  - `includeDriverStatus`: boolean (default: false)
+- **Response**:
+```json
+{
+  "statusCode": 200,
+  "data": {
+    "fromStop": "string",
+    "toStop": "string",
+    "availableBuses": [
+      {
+        "busId": "string",
+        "busNumber": "string",
+        "routeName": "string",
+        "driverName": "string",
+        "capacity": "number",
+        "isDriverOnline": "boolean", // If includeDriverStatus=true
+        "connectedPassengers": "number", // If includeDriverStatus=true
+        "journeyDetails": {
+          "fromStop": {
+            "name": "string",
+            "latitude": "number",
+            "longitude": "number",
+            "order": "number"
+          },
+          "toStop": {
+            "name": "string",
+            "latitude": "number",
+            "longitude": "number",
+            "order": "number"
+          },
+          "stopsInBetween": "array",
+          "totalStopsInJourney": "number",
+          "estimatedJourneyTime": "string"
+        }
+      }
+    ],
+    "totalBuses": "number",
+    "searchTimestamp": "string"
+  },
+  "message": "Found X buses traveling from {fromStop} to {toStop}",
+  "success": true
+}
+```
+
+#### 11. Activate Bus (Generate Token)
+- **Endpoint**: `POST /api/buses/make-active`
+- **Authentication**: None
+- **Request Body**:
+```json
+{
+  "busId": "string",
+  "secretKey": "string"
+}
+```
+- **Response**:
+```json
+{
+  "message": "Bus activated successfully",
+  "token": "string" // 6-digit OTP for driver authentication
+}
+```
+
+---
+
+## 🔌 SOCKET.IO EVENTS
+
+### **Connection Management**
+
+#### Initial Connection
+- **Event**: `connection`
+- **Description**: Establishes WebSocket connection with the server
+- **Auto-behavior**: If client doesn't identify within 5 seconds, auto-identifies as passenger
+
+#### Client Identification
+- **Event**: `identify` (Client → Server)
+- **Description**: Identifies client type (driver or passenger)
+- **Data**:
+```json
+{
+  "type": "driver" | "passenger",
+  "token": "string", // Required for drivers (6-digit token)
+  "busId": "string"  // Required for drivers
+}
+```
+- **Server Responses**:
+  - `identify:success` - Successful identification
+  - `identify:error` - Invalid token or other errors
+  - `error` - General errors
+
+---
+
+### **Driver Socket Events**
+
+#### 1. Driver Join Bus
+- **Event**: `driver:join` (Client → Server)
+- **Description**: Driver joins their assigned bus room for real-time communication
+- **Authentication**: Must be identified as driver first
+- **Data**:
+```json
+{
+  "busId": "string",
+  "driverInfo": {
+    "name": "string",
+    "phone": "string" // optional
+  }
+}
+```
+- **Server Responses**:
+  - `driver:joined` - Successfully joined bus
+  - `driver:error` - Failed to join (bus not found, unauthorized, etc.)
+- **Server Emits to Passengers**: `driver:online` with driver info
+
+#### 2. Driver Location Update
+- **Event**: `driver:location` (Client → Server)
+- **Description**: Driver sends real-time location updates to passengers in bus room
+- **Authentication**: Must be authenticated driver for the bus
+- **Data**:
+```json
+{
+  "busId": "string",
+  "location": {
+    "latitude": "number",
+    "longitude": "number"
+  },
+  "speed": "number", // km/h
+  "heading": "number", // degrees (0-360)
+  "timestamp": "string" // ISO string
+}
+```
+- **Server Responses**:
+  - `driver:location:sent` - Location update successful
+  - `driver:error` - Failed to update (unauthorized, invalid data, etc.)
+- **Server Emits to Passengers**: `bus:location` with location data
+
+#### 3. Driver Going Offline
+- **Event**: `driver:offline` (Client → Server)
+- **Description**: Driver manually reports going offline
+- **Data**:
+```json
+{
+  "busId": "string",
+  "reason": "string" // optional
+}
+```
+- **Server Emits to Passengers**: `driver:offline` notification
+
+#### 4. Driver Disconnect
+- **Event**: `disconnect` (Automatic)
+- **Description**: Handles driver disconnection (network issues, app close, etc.)
+- **Server Behavior**: 
+  - Removes driver from Redis cache
+  - Notifies passengers in bus room
+- **Server Emits to Passengers**: `driver:offline`
+
+---
+
+### **Passenger Socket Events**
+
+#### 1. Passenger Join Bus
+- **Event**: `passenger:join` (Client → Server)
+- **Description**: Passenger joins a specific bus room to receive real-time updates
+- **Data**:
+```json
+{
+  "busId": "string",
+  "passengerInfo": {
+    "name": "string", // optional
+    "boarding_stop": "string", // optional
+    "destination_stop": "string" // optional
+  }
+}
+```
+- **Server Responses**:
+  - `passenger:joined` - Successfully joined bus tracking
+  - `passenger:error` - Failed to join (bus not found, inactive, etc.)
+
+#### 2. Request Current Location
+- **Event**: `passenger:location:request` (Client → Server)
+- **Description**: Passenger requests current bus location
+- **Data**:
+```json
+{
+  "busId": "string"
+}
+```
+- **Server Responses**:
+  - `bus:location` - Current location data
+  - `passenger:info` - Info messages (bus offline, etc.)
+  - `passenger:error` - Unauthorized or other errors
+
+#### 3. Request Route Information
+- **Event**: `passenger:route:request` (Client → Server)
+- **Description**: Passenger requests bus route details
+- **Data**:
+```json
+{
+  "busId": "string"
+}
+```
+- **Server Responses**:
+  - `bus:route` - Route information with stops
+  - `passenger:info` - Route not available message
+  - `passenger:error` - Unauthorized or other errors
+
+#### 4. Leave Bus Tracking
+- **Event**: `passenger:leave` (Client → Server)
+- **Description**: Passenger stops tracking a specific bus
+- **Data**:
+```json
+{
+  "busId": "string"
+}
+```
+- **Server Behavior**: Removes passenger from bus room
+
+#### 5. Passenger Disconnect
+- **Event**: `disconnect` (Automatic)
+- **Description**: Handles passenger disconnection
+- **Server Behavior**: Removes passenger from Redis cache and all rooms
+
+---
+
+### **Real-time Server Broadcasts**
+
+#### Bus Location Updates
+- **Event**: `bus:location` (Server → Passengers)
+- **Description**: Real-time location updates sent to all passengers in bus room
+- **Data**:
+```json
+{
+  "busId": "string",
+  "location": {
+    "latitude": "number",
+    "longitude": "number"
+  },
+  "speed": "number",
+  "heading": "number",
+  "timestamp": "string",
+  "driverInfo": {
+    "name": "string"
+  }
+}
+```
+
+#### Driver Status Updates
+- **Event**: `driver:online` (Server → Passengers)
+- **Description**: Notifies passengers when driver comes online
+- **Data**:
+```json
+{
+  "busId": "string",
+  "driverInfo": {
+    "name": "string",
+    "socketId": "string"
+  },
+  "timestamp": "string"
+}
+```
+
+- **Event**: `driver:offline` (Server → Passengers)
+- **Description**: Notifies passengers when driver goes offline
+- **Data**:
+```json
+{
+  "busId": "string",
+  "reason": "string",
+  "timestamp": "string"
+}
+```
+
+#### Route Information
+- **Event**: `bus:route` (Server → Passenger)
+- **Description**: Provides bus route details
+- **Data**:
+```json
+{
+  "busId": "string",
+  "route": {
+    "routeName": "string",
+    "stops": [
+      {
+        "name": "string",
+        "latitude": "number",
+        "longitude": "number",
+        "order": "number"
+      }
+    ]
+  },
+  "totalStops": "number"
+}
+```
+
+---
+
+### **Admin/Monitoring Events**
+
+#### Get System Stats
+- **Event**: `admin:stats` (Client → Server)
+- **Description**: Get server statistics (admin only)
+- **Authentication**: Requires admin=true in handshake query
+- **Server Response**: `admin:stats:response`
+- **Data**:
+```json
+{
+  "totalConnections": "number",
+  "totalRooms": "number",
+  "timestamp": "string"
+}
+```
+
+---
+
+### **Error Events**
+
+#### General Errors
+- **Event**: `error` (Server → Client)
+- **Description**: General error messages
+- **Data**:
+```json
+{
+  "message": "string"
+}
+```
+
+#### Driver-specific Errors
+- **Event**: `driver:error` (Server → Driver)
+- **Description**: Driver-specific error messages
+- **Data**:
+```json
+{
+  "message": "string"
+}
+```
+
+#### Passenger-specific Errors
+- **Event**: `passenger:error` (Server → Passenger)
+- **Description**: Passenger-specific error messages
+- **Data**:
+```json
+{
+  "message": "string"
+}
+```
+
+---
+
+## 🔄 REDIS CACHE STRUCTURE
+
+### Active Buses Hash
+- **Key**: `active_buses`
+- **Type**: Hash
+- **Fields**: `{busId}` → JSON string of bus data
+
+### Active Passengers Hash
+- **Key**: `active_passengers`
+- **Type**: Hash
+- **Fields**: `{socketId}` → JSON string of passenger data
+
+### Bus Authentication Tokens
+- **Key**: `busToken:{busId}`
+- **Type**: String
+- **TTL**: 3600 seconds (1 hour)
+- **Value**: 6-digit numeric token
+
+---
+
+## 📝 SOCKET ROOM STRUCTURE
+
+### Bus Rooms
+- **Format**: `bus_{busId}`
+- **Members**: All passengers tracking that bus
+- **Purpose**: Broadcast location updates to interested passengers
+
+### Driver Identification
+- **Storage**: Socket.data.type = "driver"
+- **Association**: Driver socket joins their assigned bus room
+- **Broadcast Target**: All passengers in the same bus room
+
+---
+
+## 🛡️ AUTHENTICATION & AUTHORIZATION
+
+### REST API
+- **User Routes**: JWT Bearer token authentication
+- **Bus Routes**: Mostly public (admin routes can be protected later)
+
+### Socket.IO
+- **Driver Authentication**: 6-digit token validation against Redis
+- **Passenger Authentication**: None required (public access)
+- **Room Access**: Passengers can join any bus room, drivers only their assigned bus
+
+---
+
+## 📋 COMMON RESPONSE FORMAT
+
+All REST API responses follow this format:
+```json
+{
+  "statusCode": "number",
+  "data": "any",
+  "message": "string",
+  "success": "boolean"
+}
+```
+
+Error responses include additional error details and appropriate HTTP status codes.
+
+---
+
+## 🎯 SOCKET.IO USAGE EXAMPLES
+
+### Driver Connection Flow
+1. Connect to server
+2. Emit `identify` with type="driver", token, and busId
+3. Wait for `identify:success`
+4. Emit `driver:join` with bus details
+5. Wait for `driver:joined`
+6. Start sending `driver:location` updates periodically
+
+### Passenger Connection Flow
+1. Connect to server
+2. Emit `identify` with type="passenger" (or wait 5s for auto-identification)
+3. Emit `passenger:join` with desired busId
+4. Wait for `passenger:joined`
+5. Listen for `bus:location` updates
+6. Optionally request `passenger:location:request` or `passenger:route:request`
+
+This documentation covers all available REST API endpoints and Socket.IO events in the WHERE IS MY BUS application.

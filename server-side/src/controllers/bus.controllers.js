@@ -462,69 +462,197 @@ const getBusesFromStopToStop = asyncHandler(async (req, res) => {
         throw new ApiError(400, "From stop and to stop cannot be the same");
     }
 
-    // Get all active buses
-    const buses = await Bus.find({ isActive: true });
-
-    // Filter buses that travel from fromStop to toStop
-    const validBuses = buses.filter(bus => {
-        // Check if the bus has a route with stops
-        if (!bus.route || !bus.route.stops || bus.route.stops.length < 2) {
-            return false;
+    // Optimized query: Find buses by checking startPoint, endPoint, and stops in order
+    const buses = await Bus.aggregate([
+        {
+            // First stage: Find buses that contain fromStop in startPoint, endPoint, or stops
+            $match: {
+                $or: [
+                    // Check if fromStop matches startPoint
+                    { "route.startPoint.name": { $regex: new RegExp(`^${fromStop.trim()}$`, 'i') } },
+                    // Check if fromStop matches endPoint  
+                    { "route.endPoint.name": { $regex: new RegExp(`^${fromStop.trim()}$`, 'i') } },
+                    // Check if fromStop is in stops array
+                    { "route.stops.name": { $regex: new RegExp(`^${fromStop.trim()}$`, 'i') } }
+                ]
+            }
+        },
+        {
+            // Add fields to determine the order positions of fromStop and toStop
+            $addFields: {
+                fromStopPosition: {
+                    $cond: {
+                        if: { $regexMatch: { input: "$route.startPoint.name", regex: new RegExp(`^${fromStop.trim()}$`, 'i') } },
+                        then: 0, // startPoint has order 0
+                        else: {
+                            $cond: {
+                                if: { $regexMatch: { input: "$route.endPoint.name", regex: new RegExp(`^${fromStop.trim()}$`, 'i') } },
+                                then: 999999, // endPoint has high order
+                                else: {
+                                    // Find order in stops array
+                                    $let: {
+                                        vars: {
+                                            matchingStop: {
+                                                $arrayElemAt: [
+                                                    {
+                                                        $filter: {
+                                                            input: "$route.stops",
+                                                            cond: {
+                                                                $regexMatch: {
+                                                                    input: "$$this.name",
+                                                                    regex: new RegExp(`^${fromStop.trim()}$`, 'i')
+                                                                }
+                                                            }
+                                                        }
+                                                    },
+                                                    0
+                                                ]
+                                            }
+                                        },
+                                        in: { $ifNull: ["$$matchingStop.order", -1] }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                toStopPosition: {
+                    $cond: {
+                        if: { $regexMatch: { input: "$route.startPoint.name", regex: new RegExp(`^${toStop.trim()}$`, 'i') } },
+                        then: 0, // startPoint has order 0
+                        else: {
+                            $cond: {
+                                if: { $regexMatch: { input: "$route.endPoint.name", regex: new RegExp(`^${toStop.trim()}$`, 'i') } },
+                                then: 999999, // endPoint has high order
+                                else: {
+                                    // Find order in stops array
+                                    $let: {
+                                        vars: {
+                                            matchingStop: {
+                                                $arrayElemAt: [
+                                                    {
+                                                        $filter: {
+                                                            input: "$route.stops",
+                                                            cond: {
+                                                                $regexMatch: {
+                                                                    input: "$$this.name",
+                                                                    regex: new RegExp(`^${toStop.trim()}$`, 'i')
+                                                                }
+                                                            }
+                                                        }
+                                                    },
+                                                    0
+                                                ]
+                                            }
+                                        },
+                                        in: { $ifNull: ["$$matchingStop.order", -1] }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        {
+            // Filter: Both stops must exist and fromStop must come before toStop
+            $match: {
+                $and: [
+                    { fromStopPosition: { $gte: 0 } }, // fromStop exists
+                    { toStopPosition: { $gte: 0 } },   // toStop exists
+                    { $expr: { $lt: ["$fromStopPosition", "$toStopPosition"] } } // fromStop comes before toStop
+                ]
+            }
+        },
+        {
+            // Remove temporary calculation fields
+            $unset: ["fromStopPosition", "toStopPosition"]
         }
+    ]);
 
-        // Find both stops in the route
-        const fromStopDetails = bus.route.stops.find(stop => 
-            stop.name && stop.name.toLowerCase().trim() === fromStop.toLowerCase().trim()
-        );
-        
-        const toStopDetails = bus.route.stops.find(stop => 
-            stop.name && stop.name.toLowerCase().trim() === toStop.toLowerCase().trim()
-        );
-
-        // Both stops must exist in the route
-        if (!fromStopDetails || !toStopDetails) {
-            return false;
-        }
-
-        // fromStop must come BEFORE toStop (correct travel order)
-        return fromStopDetails.order < toStopDetails.order;
-    });
+    // Filter buses that travel from fromStop to toStop (already done in aggregation)
+    const validBuses = buses; // No additional filtering needed as aggregation handles this
 
     // Add detailed information for each valid bus
     let busesWithJourneyDetails = validBuses.map(bus => {
-        const fromStopDetails = bus.route.stops.find(stop => 
-            stop.name.toLowerCase().trim() === fromStop.toLowerCase().trim()
-        );
-        
-        const toStopDetails = bus.route.stops.find(stop => 
-            stop.name.toLowerCase().trim() === toStop.toLowerCase().trim()
-        );
+        // Helper function to find stop details by name
+        const findStopDetails = (stopName) => {
+            // Check startPoint first
+            if (bus.route.startPoint && bus.route.startPoint.name && 
+                bus.route.startPoint.name.toLowerCase().trim() === stopName.toLowerCase().trim()) {
+                return {
+                    ...bus.route.startPoint,
+                    order: 0 // startPoint has order 0
+                };
+            }
+            
+            // Check endPoint
+            if (bus.route.endPoint && bus.route.endPoint.name && 
+                bus.route.endPoint.name.toLowerCase().trim() === stopName.toLowerCase().trim()) {
+                return {
+                    ...bus.route.endPoint,
+                    order: 999999 // endPoint has high order
+                };
+            }
+            
+            // Check in stops array
+            if (bus.route.stops && bus.route.stops.length > 0) {
+                const stopInArray = bus.route.stops.find(stop => 
+                    stop.name && stop.name.toLowerCase().trim() === stopName.toLowerCase().trim()
+                );
+                if (stopInArray) {
+                    return stopInArray;
+                }
+            }
+            
+            return null;
+        };
+
+        const fromStopDetails = findStopDetails(fromStop);
+        const toStopDetails = findStopDetails(toStop);
 
         // Calculate journey details
-        const stopsInBetween = bus.route.stops.filter(stop => 
-            stop.order > fromStopDetails.order && stop.order < toStopDetails.order
-        ).sort((a, b) => a.order - b.order);
+        let stopsInBetween = [];
+        let totalStopsInJourney = 0;
 
-        const totalStopsInJourney = toStopDetails.order - fromStopDetails.order;
+        if (fromStopDetails && toStopDetails) {
+            // Get all intermediate stops between fromStop and toStop
+            if (bus.route.stops && bus.route.stops.length > 0) {
+                stopsInBetween = bus.route.stops.filter(stop => 
+                    stop.order > fromStopDetails.order && stop.order < toStopDetails.order
+                ).sort((a, b) => a.order - b.order);
+            }
+
+            totalStopsInJourney = toStopDetails.order - fromStopDetails.order;
+            
+            // If one is startPoint/endPoint, calculate differently
+            if (fromStopDetails.order === 0 || toStopDetails.order === 999999) {
+                totalStopsInJourney = stopsInBetween.length + 1;
+            }
+        }
 
         return {
-            ...bus.toObject(),
+            ...bus, // Note: aggregation results don't need .toObject()
             journeyDetails: {
-                fromStop: {
+                fromStop: fromStopDetails ? {
                     name: fromStopDetails.name,
                     latitude: fromStopDetails.latitude,
                     longitude: fromStopDetails.longitude,
-                    order: fromStopDetails.order
-                },
-                toStop: {
+                    order: fromStopDetails.order,
+                    type: fromStopDetails.order === 0 ? 'startPoint' : 
+                          fromStopDetails.order === 999999 ? 'endPoint' : 'stop'
+                } : null,
+                toStop: toStopDetails ? {
                     name: toStopDetails.name,
                     latitude: toStopDetails.latitude,
                     longitude: toStopDetails.longitude,
-                    order: toStopDetails.order
-                },
+                    order: toStopDetails.order,
+                    type: toStopDetails.order === 0 ? 'startPoint' : 
+                          toStopDetails.order === 999999 ? 'endPoint' : 'stop'
+                } : null,
                 stopsInBetween: stopsInBetween,
                 totalStopsInJourney: totalStopsInJourney,
-                estimatedJourneyTime: `${totalStopsInJourney * 15} minutes` // Assuming 15 mins per stop
+                estimatedJourneyTime: `${Math.max(totalStopsInJourney * 15, 15)} minutes` // Minimum 15 mins
             }
         };
     });
