@@ -199,8 +199,22 @@ export function LeafletMap({ selectedBus, busLocation, onLocationUpdate }: Leafl
 
       // Fit map to show the route
       if (markers.length > 0) {
-        const group = new L.featureGroup(markers)
-        map.fitBounds(group.getBounds().pad(0.1))
+        try {
+          const group = new L.featureGroup(markers)
+          const bounds = group.getBounds()
+          if (bounds.isValid()) {
+            map.fitBounds(bounds.pad(0.1))
+          } else {
+            console.warn('Invalid bounds, centering on first marker')
+            if (markers[0]) {
+              map.setView(markers[0].getLatLng(), 13)
+            }
+          }
+        } catch (error) {
+          console.error('Error fitting bounds:', error)
+          // Fallback to default view
+          map.setView([28.6139, 77.2090], 12)
+        }
       }
 
       console.log('Journey route created successfully')
@@ -367,7 +381,18 @@ export function LeafletMap({ selectedBus, busLocation, onLocationUpdate }: Leafl
             console.log('Route summary:', route.summary)
             
             // Fit bounds to show the entire route
-            map.fitBounds(L.latLngBounds(waypoints).pad(0.1))
+            try {
+              const bounds = L.latLngBounds(waypoints)
+              if (bounds.isValid()) {
+                map.fitBounds(bounds.pad(0.1))
+              } else {
+                console.warn('Invalid route bounds, using default view')
+                map.setView([28.6139, 77.2090], 12)
+              }
+            } catch (error) {
+              console.error('Error fitting route bounds:', error)
+              map.setView([28.6139, 77.2090], 12)
+            }
           })
 
           // Listen for errors
@@ -452,7 +477,18 @@ export function LeafletMap({ selectedBus, busLocation, onLocationUpdate }: Leafl
       })
 
       // Fit bounds
-      map.fitBounds(L.latLngBounds(waypoints).pad(0.1))
+      try {
+        const bounds = L.latLngBounds(waypoints)
+        if (bounds.isValid()) {
+          map.fitBounds(bounds.pad(0.1))
+        } else {
+          console.warn('Invalid fallback bounds, using default view')
+          map.setView([28.6139, 77.2090], 12)
+        }
+      } catch (error) {
+        console.error('Error fitting fallback bounds:', error)
+        map.setView([28.6139, 77.2090], 12)
+      }
       
       console.log('Fallback route created successfully')
       

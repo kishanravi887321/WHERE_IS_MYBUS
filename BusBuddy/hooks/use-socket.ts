@@ -12,7 +12,7 @@ export function useSocket() {
     const connectSocket = async () => {
       try {
         setConnectionStatus("connecting")
-        await socketService.connect()
+        await socketService.connectAsPassenger()
         setIsConnected(true)
         setConnectionStatus("connected")
       } catch (error) {

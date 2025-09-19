@@ -13,16 +13,17 @@ export function useDriverSocket() {
     async (token: string, busId: string) => {
       try {
         setConnectionStatus("connecting")
-        await socketService.connect()
-
-        // Identify as driver with token
-        socketService.identifyAsDriver(token, busId)
+        
+        // Use the new connectAsDriver method that handles identification
+        await socketService.connectAsDriver(token, busId)
 
         setIsConnected(true)
+        setIsAuthenticated(true)
         setConnectionStatus("connected")
       } catch (error) {
         console.error("Failed to connect as driver:", error)
         setIsConnected(false)
+        setIsAuthenticated(false)
         setConnectionStatus("disconnected")
         throw error
       }
