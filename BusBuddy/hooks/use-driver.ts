@@ -103,6 +103,8 @@ export function useGeolocation() {
   } | null>(null)
   const [isTracking, setIsTracking] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [retryCount, setRetryCount] = useState(0)
+  const maxRetries = 3
 
   const startTracking = useCallback(() => {
     if (!navigator.geolocation) {
@@ -122,16 +124,36 @@ export function useGeolocation() {
           speed: speed ? speed * 3.6 : 0, // Convert m/s to km/h
           heading: heading || 0,
         })
+        // Clear any previous errors on successful location
+        if (error) setError(null)
       },
       (error) => {
         console.error("Geolocation error:", error)
-        setError(error.message)
+        
+        // Provide user-friendly error messages
+        let errorMessage = error.message
+        switch (error.code) {
+          case error.PERMISSION_DENIED:
+            errorMessage = "Location access denied. Please enable location permissions in your browser settings."
+            break
+          case error.POSITION_UNAVAILABLE:
+            errorMessage = "Location information unavailable. Please check your GPS/location services."
+            break
+          case error.TIMEOUT:
+            errorMessage = "Location request timed out. Trying again..."
+            // Don't stop tracking on timeout, just retry
+            return
+          default:
+            errorMessage = `Location error: ${error.message}`
+        }
+        
+        setError(errorMessage)
         setIsTracking(false)
       },
       {
         enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 1000,
+        timeout: 30000, // Increased from 10s to 30s
+        maximumAge: 5000, // Increased from 1s to 5s for better performance
       },
     )
 
@@ -139,17 +161,32 @@ export function useGeolocation() {
       navigator.geolocation.clearWatch(watchId)
       setIsTracking(false)
     }
-  }, [])
+  }, [error])
 
   const stopTracking = useCallback(() => {
     setIsTracking(false)
+    setError(null)
+    setRetryCount(0)
   }, [])
+
+  const retryTracking = useCallback(() => {
+    if (retryCount < maxRetries) {
+      setRetryCount(prev => prev + 1)
+      setError(null)
+      startTracking()
+    } else {
+      setError("Maximum retry attempts reached. Please check your location settings and try again manually.")
+    }
+  }, [retryCount, maxRetries, startTracking])
 
   return {
     location,
     isTracking,
     error,
+    retryCount,
+    maxRetries,
     startTracking,
     stopTracking,
+    retryTracking,
   }
 }

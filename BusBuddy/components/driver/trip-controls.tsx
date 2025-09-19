@@ -22,7 +22,7 @@ export function TripControls({ busId, token, driverName, onTripEnd }: TripContro
 
   const { isConnected, isAuthenticated, connectAsDriver, joinAsDriver, sendLocationUpdate, goOffline } =
     useDriverSocket()
-  const { location, isTracking, error, startTracking, stopTracking } = useGeolocation()
+  const { location, isTracking, error, retryCount, maxRetries, startTracking, stopTracking, retryTracking } = useGeolocation()
   const { toast } = useToast()
 
   // Connect as driver on component mount
@@ -139,7 +139,44 @@ export function TripControls({ busId, token, driverName, onTripEnd }: TripContro
               {isTripActive ? "Trip Active" : "Trip Inactive"}
             </Badge>
           </div>
-          {error && <div className="mt-2 text-xs text-red-600">Location Error: {error}</div>}
+          {error && (
+            <div className="mt-2 p-3 bg-red-50 border border-red-200 rounded-lg">
+              <div className="flex items-start gap-2">
+                <div className="flex-shrink-0 mt-0.5">
+                  <svg className="h-4 w-4 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div className="flex-1">
+                  <h4 className="text-xs font-semibold text-red-800">Location Error</h4>
+                  <p className="text-xs text-red-700 mt-1">{error}</p>
+                  {error.includes("denied") && (
+                    <div className="mt-2 text-xs text-red-600">
+                      <p>💡 <strong>How to fix:</strong></p>
+                      <ul className="list-disc list-inside mt-1 space-y-1">
+                        <li>Click the location icon 📍 in your browser address bar</li>
+                        <li>Select "Always allow" for location access</li>
+                        <li>Refresh the page and try again</li>
+                      </ul>
+                    </div>
+                  )}
+                  {error.includes("timeout") && (
+                    <div className="mt-2 text-xs text-red-600">
+                      <p>💡 <strong>Tip:</strong> Move to an area with better GPS signal or try again in a moment.</p>
+                    </div>
+                  )}
+                  {retryCount < maxRetries && !error.includes("denied") && (
+                    <button
+                      onClick={retryTracking}
+                      className="mt-2 px-3 py-1 text-xs bg-red-100 hover:bg-red-200 text-red-800 rounded-md border border-red-300 transition-colors"
+                    >
+                      Retry Location ({retryCount}/{maxRetries})
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
