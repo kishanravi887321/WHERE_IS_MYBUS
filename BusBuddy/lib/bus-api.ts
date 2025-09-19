@@ -36,6 +36,25 @@ export interface BusSearchResult {
   capacity: number
   isDriverOnline: boolean
   connectedPassengers: number
+  route?: {
+    startPoint: {
+      name: string
+      latitude: number
+      longitude: number
+    }
+    endPoint: {
+      name: string
+      latitude: number
+      longitude: number
+    }
+    stops: Array<{
+      name: string
+      latitude: number
+      longitude: number
+      order: number
+      _id?: string
+    }>
+  }
   journeyDetails?: {
     fromStop: BusStop
     toStop: BusStop
