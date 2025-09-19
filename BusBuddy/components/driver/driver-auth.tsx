@@ -38,25 +38,28 @@ export function DriverAuth({ onAuthSuccess }: DriverAuthProps) {
       const driverApi = DriverApiService.getInstance()
       const result = await driverApi.activateBus(busId.trim(), secretKey.trim())
 
-      console.log("Bus activation result:", result)
-      console.log("Bus info:", result.busInfo)
+      console.log("🔍 Full API Response:", result)
+      console.log("🔍 BusInfo from API:", result.busInfo)
+      console.log("🔍 BusInfo properties:", {
+        busNumber: result.busInfo?.busNumber,
+        routeName: result.busInfo?.routeName,
+        driverName: result.busInfo?.driverName,
+        driverPhone: result.busInfo?.driverPhone,
+        capacity: result.busInfo?.capacity
+      })
 
       toast({
         title: "Bus activated successfully",
         description: `Your driver token: ${result.token}`,
       })
 
-      // Ensure busInfo exists, otherwise use fallback
-      const busInfo = result.busInfo || {
+      console.log("🔍 Calling onAuthSuccess with:", {
         busId: busId.trim(),
-        busNumber: "Unknown",
-        routeName: "Unknown Route",
-        driverName: "Unknown Driver",
-        driverPhone: "Unknown",
-        capacity: 0
-      }
+        token: result.token,
+        busInfo: result.busInfo
+      })
 
-      onAuthSuccess(busId.trim(), result.token, busInfo)
+      onAuthSuccess(busId.trim(), result.token, result.busInfo)
     } catch (error: any) {
       toast({
         title: "Activation failed",
