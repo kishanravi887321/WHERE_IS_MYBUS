@@ -794,7 +794,7 @@ export  const MakeTheBusActive = asyncHandler(async (req, res) => {
         throw new ApiError(500, "Failed to store authentication token");
     }
 
-    return res.status(200).json({ message: "Bus activated successfully" , token:token});
+    return res.status(200).json({ message: "Bus activated successfully" , token:token,busInfo:bus});
 });
 
 export {

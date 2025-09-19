@@ -6,6 +6,7 @@ import { AuthService } from "@/lib/auth"
 import { DriverAuth } from "@/components/driver/driver-auth"
 import { TripControls } from "@/components/driver/trip-controls"
 import { BusInfo } from "@/components/driver/bus-info"
+import { DriverConnectionDebug } from "@/components/driver/driver-connection-debug"
 import { Button } from "@/components/ui/button"
 import { Bus, ArrowLeft } from "lucide-react"
 import { Toaster } from "@/components/ui/toaster"
@@ -34,6 +35,7 @@ export default function DriverPage() {
   }, [router])
 
   const handleAuthSuccess = (busId: string, token: string, busInfo: any) => {
+    console.log("Auth success received:", { busId, token, busInfo })
     setDriverSession({ busId, token, busInfo })
   }
 
@@ -96,14 +98,19 @@ export default function DriverPage() {
 
       {/* Main Content */}
       <main className="p-3 sm:p-4 max-w-md mx-auto space-y-4 animate-fade-in">
+        {/* Debug info */}
+        <div className="bg-gray-100 p-2 rounded text-xs">
+          <pre>{JSON.stringify(driverSession, null, 2)}</pre>
+        </div>
+        
         <div className="animate-slide-up">
           <BusInfo
             busId={driverSession.busId}
-            busNumber={driverSession.busInfo.busNumber}
-            routeName={driverSession.busInfo.routeName}
-            driverName="Driver" // In real app, get from auth
-            driverPhone={driverSession.busInfo.driverPhone}
-            capacity={driverSession.busInfo.capacity}
+            busNumber={driverSession.busInfo?.busNumber || "Unknown"}
+            routeName={driverSession.busInfo?.routeName || "Unknown Route"}
+            driverName={driverSession.busInfo?.driverName || "Unknown Driver"}
+            driverPhone={driverSession.busInfo?.driverPhone || ""}
+            capacity={driverSession.busInfo?.capacity || 0}
           />
         </div>
 
@@ -111,8 +118,15 @@ export default function DriverPage() {
           <TripControls
             busId={driverSession.busId}
             token={driverSession.token}
-            driverName="Driver" // In real app, get from auth
+            driverName={driverSession.busInfo?.driverName || "Unknown Driver"}
             onTripEnd={handleTripEnd}
+          />
+        </div>
+
+        <div className="animate-slide-up" style={{ animationDelay: "200ms" }}>
+          <DriverConnectionDebug
+            token={driverSession.token}
+            busId={driverSession.busId}
           />
         </div>
       </main>

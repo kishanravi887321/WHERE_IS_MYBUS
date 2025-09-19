@@ -75,8 +75,7 @@ export class SocketService {
         this.isConnected = true
         this.reconnectAttempts = 0
 
-        // Auto-identify as passenger
-        this.identifyAsPassenger()
+        // Don't auto-identify - let components handle identification
         resolve()
       })
 
@@ -221,6 +220,50 @@ export class SocketService {
 
     this.socket.emit("passenger:route:request", {
       busId,
+    })
+  }
+
+  // Passenger connection method
+  connectAsPassenger(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      this.connect()
+        .then(() => {
+          // Identify as passenger
+          this.identifyAsPassenger()
+          resolve()
+        })
+        .catch(reject)
+    })
+  }
+
+  // Driver connection method
+  connectAsDriver(token: string, busId: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+      // First connect to socket
+      this.connect()
+        .then(() => {
+          // Then identify as driver
+          this.identifyAsDriver(token, busId)
+          
+          // Listen for identification success/error
+          const onSuccess = () => {
+            console.log("✅ Driver identified successfully")
+            this.socket?.off("identify:success", onSuccess)
+            this.socket?.off("identify:error", onError)
+            resolve()
+          }
+          
+          const onError = (error: any) => {
+            console.error("❌ Driver identification failed:", error)
+            this.socket?.off("identify:success", onSuccess)
+            this.socket?.off("identify:error", onError)
+            reject(new Error(error.message || "Driver identification failed"))
+          }
+          
+          this.socket?.on("identify:success", onSuccess)
+          this.socket?.on("identify:error", onError)
+        })
+        .catch(reject)
     })
   }
 
