@@ -1,0 +1,802 @@
+# BusBuddy API Documentation
+Complete API reference for frontend integration
+
+Base URL: http://localhost:3000
+API Prefix: /api
+
+Authentication: JWT-based with access and refresh tokens
+Content-Type: application/json
+
+## Authentication & User Management (/api/users)
+
+### 1. User Registration
+**POST** `/api/users/register`
+
+**Request Body:**
+```json
+{
+  "username": "string (required)",
+  "email": "string (required, valid email)",
+  "password": "string (required, strong password)"
+}
+```
+
+**Response (201 - Success):**
+```json
+{
+  "statusCode": 201,
+  "data": {
+    "userLoggedIn": {
+      "_id": "string",
+      "username": "string",
+      "email": "string",
+      "fullname": "string (optional)",
+      "avatar": "string (cloudinary URL)",
+      "coverImage": "string (cloudinary URL)",
+      "createdAt": "ISO string",
+      "updatedAt": "ISO string"
+    },
+    "accessToken": "string (JWT)",
+    "refreshToken": "string (JWT)"
+  },
+  "message": "User registered and logged in successfully!",
+  "success": true
+}
+```
+
+**Error Responses:**
+- **400**: "All fields are required" | "Please write a strong password!"
+- **409**: "user already exist !!"
+
+**Cookies Set:**
+- accessToken (httpOnly, sameSite: 'Lax')
+- refreshToken (httpOnly, sameSite: 'Lax')
+
+---
+
+### 2. User Login
+**POST** `/api/users/login`
+
+**Request Body:**
+```json
+{
+  "email": "string (required)",
+  "password": "string (required)"
+}
+```
+
+**Response (200 - Success):**
+```json
+{
+  "statusCode": 200,
+  "data": {
+    "userLoggedIn": {
+      "_id": "string",
+      "username": "string",
+      "email": "string",
+      "fullname": "string",
+      "avatar": "string",
+      "coverImage": "string",
+      "createdAt": "ISO string",
+      "updatedAt": "ISO string"
+    },
+    "accessToken": "string (JWT)",
+    "refreshToken": "string (JWT)"
+  },
+  "message": "User logged in successfully!",
+  "success": true
+}
+```
+
+**Error Responses:**
+- **400**: "Please provide valid email and password" | "User not found" | "Incorrect password. Please try again"
+
+**Cookies Set:**
+- accessToken (httpOnly, sameSite: 'Lax')
+- refreshToken (httpOnly, sameSite: 'Lax')
+
+---
+
+### 3. Refresh Access Token
+**POST** `/api/users/refresh-token`
+
+**Request Body (Optional):**
+```json
+{
+  "refreshToken": "string (if not in cookies)"
+}
+```
+
+**Response (200 - Success):**
+```json
+{
+  "statusCode": 200,
+  "data": {
+    "accessToken": "string (new JWT)",
+    "refreshToken": "string (new JWT)"
+  },
+  "message": "Access token refreshed successfully",
+  "success": true
+}
+```
+
+**Error Responses:**
+- **401**: "Refresh token is required" | "Invalid refresh token" | "Refresh token is expired or used"
+
+**Cookies Updated:**
+- accessToken (new token)
+- refreshToken (new token)
+
+---
+
+### 4. User Logout
+**POST** `/api/users/logout`
+**Authorization Required:** Bearer token in header or cookie
+
+**Request Body:** None
+
+**Response (200 - Success):**
+```json
+{
+  "statusCode": 200,
+  "data": {},
+  "message": "User logged out successfully",
+  "success": true
+}
+```
+
+**Cookies Cleared:**
+- accessToken
+- refreshToken
+
+---
+
+### 5. Change Password
+**POST** `/api/users/changepassword`
+**Authorization Required:** Bearer token in header or cookie
+
+**Request Body:**
+```json
+{
+  "oldpassword": "string (required)",
+  "newpassword": "string (required, strong password)"
+}
+```
+
+**Response (200 - Success):**
+```json
+{
+  "statusCode": 200,
+  "data": null,
+  "message": "Password successfully changed",
+  "success": true
+}
+```
+
+**Error Responses:**
+- **400**: "Invalid previous password" | "Please write a strong password!"
+- **404**: "User not found"
+
+---
+
+## Bus Management (/api/buses)
+
+### 1. Search Buses
+**GET** `/api/buses/search`
+**Public Route**
+
+**Query Parameters:**
+- `query` (string, optional): Search by bus number, route name, or driver name
+- `latitude` (number, optional): User's latitude for location-based search
+- `longitude` (number, optional): User's longitude for location-based search
+- `radius` (number, optional, default: 5): Search radius in kilometers
+
+**Response (200 - Success):**
+```json
+{
+  "statusCode": 200,
+  "data": {
+    "buses": [
+      {
+        "_id": "string",
+        "busId": "string",
+        "busNumber": "string",
+        "routeName": "string",
+        "driverName": "string",
+        "driverPhone": "string",
+        "capacity": "number",
+        "isActive": "boolean",
+        "route": {
+          "startPoint": {
+            "name": "string",
+            "latitude": "number",
+            "longitude": "number"
+          },
+          "endPoint": {
+            "name": "string",
+            "latitude": "number",
+            "longitude": "number"
+          },
+          "stops": [
+            {
+              "name": "string",
+              "latitude": "number",
+              "longitude": "number",
+              "order": "number"
+            }
+          ]
+        },
+        "distance": "number (if location search)",
+        "currentLocation": "object (if available)",
+        "lastUpdated": "ISO string (if available)"
+      }
+    ],
+    "searchQuery": "string or null",
+    "location": "object or null",
+    "count": "number"
+  },
+  "message": "Bus search completed successfully",
+  "success": true
+}
+```
+
+---
+
+### 2. Get Active Buses Status
+**GET** `/api/buses/active-status`
+**Public Route**
+
+**Response (200 - Success):**
+```json
+{
+  "statusCode": 200,
+  "data": {
+    "activeBuses": [
+      {
+        "busId": "string",
+        "busNumber": "string",
+        "routeName": "string",
+        "driverInfo": "object",
+        "lastUpdate": "ISO string",
+        "connectedPassengers": "number",
+        "currentLocation": {
+          "location": {
+            "latitude": "number",
+            "longitude": "number"
+          },
+          "speed": "number",
+          "lastUpdated": "ISO string"
+        }
+      }
+    ],
+    "totalActiveBuses": "number",
+    "timestamp": "ISO string"
+  },
+  "message": "Active buses status retrieved successfully",
+  "success": true
+}
+```
+
+---
+
+### 3. Get Buses by Boarding Stop
+**GET** `/api/buses/stop/:stopName`
+**Public Route**
+
+**Path Parameters:**
+- `stopName` (string, required): Name of the boarding stop
+
+**Query Parameters:**
+- `includeDriverStatus` (boolean, optional): Include real-time driver status
+
+**Response (200 - Success):**
+```json
+{
+  "statusCode": 200,
+  "data": {
+    "stopName": "string",
+    "availableBuses": [
+      {
+        "_id": "string",
+        "busId": "string",
+        "busNumber": "string",
+        "routeName": "string",
+        "driverName": "string",
+        "capacity": "number",
+        "isActive": "boolean",
+        "boardingStop": {
+          "name": "string",
+          "latitude": "number",
+          "longitude": "number",
+          "order": "number",
+          "stopsRemaining": "number"
+        },
+        "isDriverOnline": "boolean (if includeDriverStatus=true)",
+        "connectedPassengers": "number (if includeDriverStatus=true)",
+        "route": "object"
+      }
+    ],
+    "totalBuses": "number",
+    "searchTimestamp": "ISO string"
+  },
+  "message": "Found X buses passing through [stopName]",
+  "success": true
+}
+```
+
+**Error Responses:**
+- **400**: "Stop name is required"
+
+---
+
+### 4. Get Buses from Stop to Stop
+**GET** `/api/buses/from/:fromStop/to/:toStop`
+**Public Route**
+
+**Path Parameters:**
+- `fromStop` (string, required): Starting stop name
+- `toStop` (string, required): Destination stop name
+
+**Query Parameters:**
+- `includeDriverStatus` (boolean, optional): Include real-time driver status
+
+**Response (200 - Success):**
+```json
+{
+  "statusCode": 200,
+  "data": {
+    "fromStop": "string",
+    "toStop": "string",
+    "availableBuses": [
+      {
+        "_id": "string",
+        "busId": "string",
+        "busNumber": "string",
+        "routeName": "string",
+        "driverName": "string",
+        "capacity": "number",
+        "journeyDetails": {
+          "fromStop": {
+            "name": "string",
+            "latitude": "number",
+            "longitude": "number",
+            "order": "number"
+          },
+          "toStop": {
+            "name": "string",
+            "latitude": "number",
+            "longitude": "number",
+            "order": "number"
+          },
+          "stopsInBetween": [
+            {
+              "name": "string",
+              "latitude": "number",
+              "longitude": "number",
+              "order": "number"
+            }
+          ],
+          "totalStopsInJourney": "number",
+          "estimatedJourneyTime": "string"
+        },
+        "isDriverOnline": "boolean (if includeDriverStatus=true)",
+        "connectedPassengers": "number (if includeDriverStatus=true)"
+      }
+    ],
+    "totalBuses": "number",
+    "searchTimestamp": "ISO string"
+  },
+  "message": "Found X buses traveling from [fromStop] to [toStop]",
+  "success": true
+}
+```
+
+**Error Responses:**
+- **400**: "From stop name is required" | "To stop name is required" | "From stop and to stop cannot be the same"
+
+---
+
+## Admin Routes (Protected - Require Authentication)
+
+### 5. Create Bus
+**POST** `/api/buses/create`
+**Authorization Required:** Bearer token
+
+**Request Body:**
+```json
+{
+  "ownerEmail": "string (required)",
+  "busId": "string (required, unique)",
+  "secretKey": "string (required)",
+  "busNumber": "string (required, unique)",
+  "routeName": "string (required)",
+  "driverName": "string (required)",
+  "driverPhone": "string (required)",
+  "capacity": "number (required, min: 1)",
+  "route": {
+    "startPoint": {
+      "name": "string",
+      "latitude": "number",
+      "longitude": "number"
+    },
+    "endPoint": {
+      "name": "string",
+      "latitude": "number",
+      "longitude": "number"
+    },
+    "stops": [
+      {
+        "name": "string",
+        "latitude": "number",
+        "longitude": "number",
+        "order": "number"
+      }
+    ]
+  }
+}
+```
+
+**Response (201 - Success):**
+```json
+{
+  "statusCode": 201,
+  "data": {
+    "_id": "string",
+    "ownerEmail": "string",
+    "busId": "string",
+    "busNumber": "string",
+    "routeName": "string",
+    "driverName": "string",
+    "driverPhone": "string",
+    "capacity": "number",
+    "isActive": "boolean",
+    "route": "object",
+    "createdAt": "ISO string",
+    "updatedAt": "ISO string"
+  },
+  "message": "Bus created successfully",
+  "success": true
+}
+```
+
+**Error Responses:**
+- **409**: "Bus with this ID or number already exists"
+
+---
+
+### 6. Get All Buses
+**GET** `/api/buses/all`
+**Authorization Required:** Bearer token
+
+**Query Parameters:**
+- `page` (number, optional, default: 1): Page number
+- `limit` (number, optional, default: 10): Items per page
+- `isActive` (boolean, optional): Filter by active status
+- `routeName` (string, optional): Filter by route name
+
+**Response (200 - Success):**
+```json
+{
+  "statusCode": 200,
+  "data": {
+    "buses": [
+      {
+        "_id": "string",
+        "busId": "string",
+        "busNumber": "string",
+        "routeName": "string",
+        "driverName": "string",
+        "capacity": "number",
+        "isActive": "boolean",
+        "isDriverOnline": "boolean",
+        "connectedPassengers": "number",
+        "route": "object",
+        "createdAt": "ISO string",
+        "updatedAt": "ISO string"
+      }
+    ],
+    "currentPage": "number",
+    "totalPages": "number",
+    "totalBuses": "number"
+  },
+  "message": "Buses retrieved successfully",
+  "success": true
+}
+```
+
+---
+
+### 7. Get Bus by ID
+**GET** `/api/buses/:busId`
+**Authorization Required:** Bearer token
+
+**Path Parameters:**
+- `busId` (string, required): Unique bus identifier
+
+**Response (200 - Success):**
+```json
+{
+  "statusCode": 200,
+  "data": {
+    "_id": "string",
+    "busId": "string",
+    "busNumber": "string",
+    "routeName": "string",
+    "driverName": "string",
+    "capacity": "number",
+    "isActive": "boolean",
+    "isDriverOnline": "boolean",
+    "connectedPassengers": "number",
+    "latestLocation": {
+      "location": {
+        "latitude": "number",
+        "longitude": "number"
+      },
+      "speed": "number",
+      "heading": "number",
+      "lastUpdated": "ISO string"
+    },
+    "route": "object",
+    "createdAt": "ISO string",
+    "updatedAt": "ISO string"
+  },
+  "message": "Bus details retrieved successfully",
+  "success": true
+}
+```
+
+**Error Responses:**
+- **404**: "Bus not found"
+
+---
+
+### 8. Update Bus
+**PUT** `/api/buses/:busId`
+**Authorization Required:** Bearer token
+
+**Path Parameters:**
+- `busId` (string, required): Unique bus identifier
+
+**Request Body:**
+```json
+{
+  "busNumber": "string (optional)",
+  "routeName": "string (optional)",
+  "driverName": "string (optional)",
+  "driverPhone": "string (optional)",
+  "capacity": "number (optional)",
+  "isActive": "boolean (optional)",
+  "route": "object (optional)"
+}
+```
+
+**Response (200 - Success):**
+```json
+{
+  "statusCode": 200,
+  "data": {
+    "_id": "string",
+    "busId": "string",
+    "busNumber": "string",
+    "routeName": "string",
+    "driverName": "string",
+    "capacity": "number",
+    "isActive": "boolean",
+    "route": "object",
+    "updatedAt": "ISO string"
+  },
+  "message": "Bus updated successfully",
+  "success": true
+}
+```
+
+**Error Responses:**
+- **404**: "Bus not found"
+
+---
+
+### 9. Delete/Deactivate Bus
+**DELETE** `/api/buses/:busId`
+**Authorization Required:** Bearer token
+
+**Path Parameters:**
+- `busId` (string, required): Unique bus identifier
+
+**Query Parameters:**
+- `permanent` (boolean, optional, default: false): Permanent deletion vs deactivation
+
+**Response (200 - Success):**
+```json
+{
+  "statusCode": 200,
+  "data": null,
+  "message": "Bus deleted permanently" | "Bus deactivated successfully",
+  "success": true
+}
+```
+
+**Error Responses:**
+- **404**: "Bus not found"
+
+---
+
+### 10. Get Bus Location History
+**GET** `/api/buses/:busId/location-history`
+**Authorization Required:** Bearer token
+
+**Path Parameters:**
+- `busId` (string, required): Unique bus identifier
+
+**Query Parameters:**
+- `hours` (number, optional, default: 24): Time range in hours
+- `limit` (number, optional, default: 100): Maximum records
+
+**Response (200 - Success):**
+```json
+{
+  "statusCode": 200,
+  "data": {
+    "busId": "string",
+    "locations": [
+      {
+        "_id": "string",
+        "busId": "string",
+        "location": {
+          "latitude": "number",
+          "longitude": "number"
+        },
+        "speed": "number",
+        "heading": "number",
+        "accuracy": "number",
+        "createdAt": "ISO string"
+      }
+    ],
+    "timeRange": "string",
+    "count": "number"
+  },
+  "message": "Location history retrieved successfully",
+  "success": true
+}
+```
+
+**Error Responses:**
+- **404**: "Bus not found"
+
+---
+
+### 11. Activate Bus (Special Route)
+**POST** `/api/buses/makeactive`
+**Public Route** (requires secret key)
+
+**Request Body:**
+```json
+{
+  "busId": "string (required)",
+  "secretKey": "string (required)"
+}
+```
+
+**Response (200 - Success):**
+```json
+{
+  "message": "Bus activated successfully",
+  "token": "string (6-digit authentication token)"
+}
+```
+
+**Error Responses:**
+- **404**: "Bus not found"
+- **403**: "Invalid secret key"
+- **500**: "Failed to store authentication token"
+
+---
+
+## Error Response Format
+
+All error responses follow this structure:
+```json
+{
+  "statusCode": "number",
+  "data": null,
+  "message": "string (error description)",
+  "success": false,
+  "errors": ["array of error details (optional)"]
+}
+```
+
+---
+
+## Authentication Headers
+
+For protected routes, include the access token in one of these ways:
+
+1. **Authorization Header:**
+   ```
+   Authorization: Bearer <access_token>
+   ```
+
+2. **Cookie:**
+   ```
+   accessToken=<access_token>
+   ```
+
+---
+
+## Socket.IO Events (Real-time Features)
+
+The API also supports real-time communication via Socket.IO for:
+- Live bus location tracking
+- Driver status updates
+- Passenger count updates
+- Real-time bus search results
+
+Socket endpoint: `ws://localhost:3000`
+
+---
+
+## Data Models Summary
+
+### User Model
+- username: string (unique)
+- email: string (unique)
+- fullname: string (optional)
+- avatar: string (cloudinary URL)
+- coverImage: string (cloudinary URL)
+- password: string (hashed)
+
+### Bus Model
+- ownerEmail: string
+- busId: string (unique)
+- busNumber: string (unique)
+- routeName: string
+- driverName: string
+- driverPhone: string
+- secretKey: string
+- capacity: number
+- isActive: boolean
+- currentLocation: object
+- route: object with startPoint, endPoint, and stops array
+
+### BusLocation Model
+- busId: string
+- location: {latitude, longitude}
+- speed: number
+- heading: number
+- accuracy: number
+- driverSocketId: string
+- isDriverOnline: boolean
+- connectedPassengers: number
+
+---
+
+## Development Notes
+
+1. **Environment Variables Required:**
+   - ACCESS_TOKEN_SECRET
+   - REFRESH_TOKEN_SECRET
+   - ACCESS_TOKEN_EXPIRY
+   - REFRESH_TOKEN_EXPIRY
+   - MongoDB connection string
+   - Redis connection details
+
+2. **Strong Password Requirements:**
+   - Minimum 8 characters
+   - At least one uppercase letter
+   - At least one lowercase letter
+   - At least one number
+   - At least one special character
+
+3. **CORS Configuration:**
+   - Credentials: true
+   - Origin: Frontend URL
+
+4. **Rate Limiting:**
+   - Consider implementing rate limiting for production
+
+5. **Security Headers:**
+   - httpOnly cookies for tokens
+   - sameSite: 'Lax' configuration
+
+---
+
+This documentation covers all API endpoints with complete request/response formats, error codes, and authentication requirements for proper frontend integration.
