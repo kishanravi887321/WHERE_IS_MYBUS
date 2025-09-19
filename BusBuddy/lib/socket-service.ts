@@ -71,7 +71,6 @@ export class SocketService {
       })
 
       this.socket.on("connect", () => {
-        console.log("Socket.IO connected")
         this.isConnected = true
         this.reconnectAttempts = 0
 
@@ -80,21 +79,18 @@ export class SocketService {
       })
 
       this.socket.on("disconnect", (reason) => {
-        console.log("Socket.IO disconnected:", reason)
         this.isConnected = false
 
         // Attempt to reconnect
         if (this.reconnectAttempts < this.maxReconnectAttempts) {
           this.reconnectAttempts++
           setTimeout(() => {
-            console.log(`Reconnection attempt ${this.reconnectAttempts}`)
             this.connect()
           }, 2000 * this.reconnectAttempts)
         }
       })
 
       this.socket.on("connect_error", (error) => {
-        console.error("Socket.IO connection error:", error)
         this.isConnected = false
         reject(error)
       })
@@ -116,57 +112,47 @@ export class SocketService {
 
     // Identification responses
     this.socket.on("identify:success", (data) => {
-      console.log("Successfully identified as passenger:", data)
       this.emit("passenger:identified", data)
     })
 
     this.socket.on("identify:error", (error) => {
-      console.error("Identification error:", error)
       this.emit("passenger:error", error)
     })
 
     // Bus location updates
     this.socket.on("bus:location", (data: BusLocationUpdate) => {
-      console.log("Bus location update:", data)
       this.emit("bus:location", data)
     })
 
     // Driver status updates
     this.socket.on("driver:online", (data: DriverStatusUpdate) => {
-      console.log("Driver came online:", data)
       this.emit("driver:online", data)
     })
 
     this.socket.on("driver:offline", (data: DriverStatusUpdate) => {
-      console.log("Driver went offline:", data)
       this.emit("driver:offline", data)
     })
 
     // Route information
     this.socket.on("bus:route", (data: BusRouteInfo) => {
-      console.log("Bus route info:", data)
       this.emit("bus:route", data)
     })
 
     // Passenger responses
     this.socket.on("passenger:joined", (data) => {
-      console.log("Successfully joined bus tracking:", data)
       this.emit("passenger:joined", data)
     })
 
     this.socket.on("passenger:error", (error) => {
-      console.error("Passenger error:", error)
       this.emit("passenger:error", error)
     })
 
     this.socket.on("passenger:info", (info) => {
-      console.log("Passenger info:", info)
       this.emit("passenger:info", info)
     })
 
     // General errors
     this.socket.on("error", (error) => {
-      console.error("Socket error:", error)
       this.emit("socket:error", error)
     })
   }
@@ -189,7 +175,6 @@ export class SocketService {
     },
   ) {
     if (!this.socket) {
-      console.error("Socket not connected")
       return
     }
 
@@ -247,14 +232,12 @@ export class SocketService {
           
           // Listen for identification success/error
           const onSuccess = () => {
-            console.log("✅ Driver identified successfully")
             this.socket?.off("identify:success", onSuccess)
             this.socket?.off("identify:error", onError)
             resolve()
           }
           
           const onError = (error: any) => {
-            console.error("❌ Driver identification failed:", error)
             this.socket?.off("identify:success", onSuccess)
             this.socket?.off("identify:error", onError)
             reject(new Error(error.message || "Driver identification failed"))
@@ -344,7 +327,7 @@ export class SocketService {
         try {
           callback(data)
         } catch (error) {
-          console.error(`Error in event listener for ${event}:`, error)
+          // Silent error handling
         }
       })
     }
