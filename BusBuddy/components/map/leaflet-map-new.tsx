@@ -650,12 +650,8 @@ export function LeafletMap({ selectedBus, busLocation, onLocationUpdate }: Leafl
 
   // Test route creation function
   const testRouteCreation = () => {
-    console.log('Testing route creation with current bus data...')
     if (selectedBus) {
-      console.log('Selected bus for testing:', selectedBus)
       addRouteToMap()
-    } else {
-      console.log('No bus selected for testing')
     }
   }
 

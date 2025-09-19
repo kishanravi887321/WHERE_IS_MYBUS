@@ -10,10 +10,9 @@ interface BusInfoProps {
   routeName?: string
   driverName: string
   driverPhone?: string
-  capacity?: number
 }
 
-export function BusInfo({ busId, busNumber, routeName, driverName, driverPhone, capacity }: BusInfoProps) {
+export function BusInfo({ busId, busNumber, routeName, driverName, driverPhone }: BusInfoProps) {
   return (
     <Card>
       <CardHeader>
@@ -69,13 +68,6 @@ export function BusInfo({ busId, busNumber, routeName, driverName, driverPhone, 
             )}
           </div>
         </div>
-
-        {capacity && (
-          <div className="border-t border-border pt-4">
-            <div className="text-sm text-muted-foreground">Capacity</div>
-            <div className="font-medium">{capacity} passengers</div>
-          </div>
-        )}
       </CardContent>
     </Card>
   )

@@ -110,7 +110,6 @@ export default function DriverPage() {
             routeName={driverSession.busInfo?.routeName || "Unknown Route"}
             driverName={driverSession.busInfo?.driverName || "Unknown Driver"}
             driverPhone={driverSession.busInfo?.driverPhone || ""}
-            capacity={driverSession.busInfo?.capacity || 0}
           />
         </div>
 
