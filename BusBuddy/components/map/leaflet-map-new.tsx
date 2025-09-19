@@ -35,328 +35,21 @@ export function LeafletMap({ selectedBus, busLocation, onLocationUpdate }: Leafl
   const routeMarkersRef = useRef<any[]>([])
   const busRouteLayerRef = useRef<any>(null)
   const [isMapLoaded, setIsMapLoaded] = useState(false)
+  const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null)
   const [mapError, setMapError] = useState<string | null>(null)
-  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null)
-  const [isTrackingUser, setIsTrackingUser] = useState(false)
 
-  // Load Leaflet and Routing Machine
-  useEffect(() => {
-    const loadMapLibraries = async () => {
-      if (window.L && window.L.Routing) {
-        setIsMapLoaded(true)
-        return
-      }
-
-      try {
-        // Load Leaflet CSS
-        if (!document.querySelector('link[href*="leaflet.css"]')) {
-          const leafletCSS = document.createElement('link')
-          leafletCSS.rel = 'stylesheet'
-          leafletCSS.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'
-          leafletCSS.integrity = 'sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY='
-          leafletCSS.crossOrigin = ''
-          document.head.appendChild(leafletCSS)
-        }
-
-        // Load Routing Machine CSS
-        if (!document.querySelector('link[href*="leaflet-routing-machine"]')) {
-          const routingCSS = document.createElement('link')
-          routingCSS.rel = 'stylesheet'
-          routingCSS.href = 'https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css'
-          document.head.appendChild(routingCSS)
-        }
-
-        // Load Leaflet JS
-        if (!window.L) {
-          await new Promise((resolve, reject) => {
-            const leafletJS = document.createElement('script')
-            leafletJS.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'
-            leafletJS.integrity = 'sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo='
-            leafletJS.crossOrigin = ''
-            leafletJS.onload = () => resolve(true)
-            leafletJS.onerror = () => reject(new Error('Failed to load Leaflet'))
-            document.head.appendChild(leafletJS)
-          })
-        }
-
-        // Load Leaflet Routing Machine
-        if (!window.L?.Routing) {
-          await new Promise((resolve, reject) => {
-            const routingJS = document.createElement('script')
-            routingJS.src = 'https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js'
-            routingJS.onload = () => resolve(true)
-            routingJS.onerror = () => reject(new Error('Failed to load Routing Machine'))
-            document.head.appendChild(routingJS)
-          })
-        }
-
-        console.log('All map libraries loaded successfully')
-        setIsMapLoaded(true)
-      } catch (error) {
-        console.error('Error loading map libraries:', error)
-        setMapError('Failed to load map components. Please refresh the page.')
-      }
-    }
-
-    loadMapLibraries()
-  }, [])
-
-  // Initialize map
-  useEffect(() => {
-    if (!isMapLoaded || !mapRef.current || mapInstanceRef.current) return
-
+  // Create route from journey details as fallback
+  const createJourneyRoute = (journeyDetails: any) => {
+    if (!mapInstanceRef.current) return
+    
+    const map = mapInstanceRef.current
     const L = window.L
     
-    try {
-      // Create map
-      const map = L.map(mapRef.current, {
-        center: [28.6139, 77.209], // Delhi coordinates
-        zoom: 13,
-        zoomControl: true,
-        touchZoom: true,
-        scrollWheelZoom: true,
-        doubleClickZoom: true,
-        dragging: true,
-        tap: true,
-        tapTolerance: 15,
-        maxZoom: 18,
-        minZoom: 5
-      })
-
-      console.log('Map created successfully')
-
-      // Use ESRI World Street Map (very reliable)
-      const tileLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
-        attribution: 'Tiles &copy; Esri &mdash; Source: Esri, DeLorme, NAVTEQ, USGS, Intermap, iPC, NRCAN, Esri Japan, METI, Esri China (Hong Kong), Esri (Thailand), TomTom, 2012',
-        maxZoom: 18
-      })
-
-      tileLayer.on('tileerror', () => {
-        console.log('ESRI tiles failed, trying CARTO...')
-        map.removeLayer(tileLayer)
-        
-        // Fallback to CARTO
-        const cartoLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-          attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
-          maxZoom: 19,
-          subdomains: 'abcd'
-        })
-
-        cartoLayer.on('tileerror', () => {
-          console.log('CARTO failed, trying OpenStreetMap...')
-          map.removeLayer(cartoLayer)
-          
-          // Final fallback to OpenStreetMap
-          const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; OpenStreetMap contributors',
-            maxZoom: 19,
-            subdomains: ['a', 'b', 'c']
-          })
-          osmLayer.addTo(map)
-        })
-        
-        cartoLayer.addTo(map)
-      })
-
-      tileLayer.on('tileload', () => {
-        console.log('ESRI tiles loaded successfully')
-      })
-
-      tileLayer.addTo(map)
-      mapInstanceRef.current = map
-
-      // Get user location
-      if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-          (position) => {
-            const { latitude, longitude } = position.coords
-            const userPos = { lat: latitude, lng: longitude }
-            setUserLocation(userPos)
-            
-            // Add user marker
-            if (userMarkerRef.current) {
-              map.removeLayer(userMarkerRef.current)
-            }
-            
-            userMarkerRef.current = L.marker([latitude, longitude], {
-              icon: L.divIcon({
-                className: 'user-marker',
-                html: '<div style="background-color: #3b82f6; width: 12px; height: 12px; border-radius: 50%; border: 3px solid white; box-shadow: 0 0 10px rgba(59, 130, 246, 0.5);"></div>',
-                iconSize: [18, 18],
-                iconAnchor: [9, 9]
-              })
-            }).addTo(map)
-            
-            map.setView([latitude, longitude], 15)
-            
-            if (onLocationUpdate) {
-              onLocationUpdate({ latitude, longitude })
-            }
-          },
-          (error) => {
-            console.warn('Geolocation error:', error)
-          },
-          {
-            enableHighAccuracy: true,
-            timeout: 10000,
-            maximumAge: 300000
-          }
-        )
-      }
-
-    } catch (error) {
-      console.error('Error initializing map:', error)
-      setMapError('Failed to initialize map. Please refresh the page.')
-    }
-  }, [isMapLoaded, onLocationUpdate])
-
-  // Update bus location and routing
-  useEffect(() => {
-    if (!mapInstanceRef.current || !busLocation) return
-
-    const map = mapInstanceRef.current
-    const L = window.L
-
-    try {
-      // Remove existing bus marker
-      if (busMarkerRef.current) {
-        map.removeLayer(busMarkerRef.current)
-      }
-
-      // Add new bus marker
-      busMarkerRef.current = L.marker([busLocation.latitude, busLocation.longitude], {
-        icon: L.divIcon({
-          className: 'bus-marker',
-          html: `
-            <div style="
-              background-color: #ef4444;
-              width: 24px;
-              height: 24px;
-              border-radius: 50%;
-              border: 3px solid white;
-              box-shadow: 0 0 15px rgba(239, 68, 68, 0.6);
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              font-size: 10px;
-              color: white;
-              font-weight: bold;
-            ">🚌</div>
-          `,
-          iconSize: [30, 30],
-          iconAnchor: [15, 15]
-        })
-      }).addTo(map)
-
-      // Add popup with bus info
-      busMarkerRef.current.bindPopup(`
-        <div style="text-align: center; min-width: 150px;">
-          <strong>${selectedBus?.busNumber || 'Bus'}</strong><br>
-          <small>Speed: ${busLocation.speed} km/h</small><br>
-          <small>Updated: ${new Date(busLocation.lastUpdated).toLocaleTimeString()}</small>
-        </div>
-      `)
-
-      // Center map on bus if tracking
-      if (isTrackingUser) {
-        map.setView([busLocation.latitude, busLocation.longitude], map.getZoom())
-      }
-    } catch (error) {
-      console.error('Error updating bus location:', error)
-    }
-  }, [busLocation, selectedBus, isTrackingUser])
-
-  // Display complete bus route with real routing when bus is selected
-  useEffect(() => {
-    if (!mapInstanceRef.current || !selectedBus?.route || !window.L.Routing) return
-
-    const map = mapInstanceRef.current
-    const L = window.L
-
-    try {
-      // Remove existing routing
-      if (routeControlRef.current) {
-        map.removeControl(routeControlRef.current)
-      }
-
-      // Create waypoints for the complete bus route
-      const routeWaypoints = []
-      
-      // Add start point
-      routeWaypoints.push(L.latLng(selectedBus.route.startPoint.latitude, selectedBus.route.startPoint.longitude))
-      
-      // Add all intermediate stops in order
-      if (selectedBus.route.stops && selectedBus.route.stops.length > 0) {
-        const sortedStops = [...selectedBus.route.stops].sort((a, b) => a.order - b.order)
-        sortedStops.forEach(stop => {
-          routeWaypoints.push(L.latLng(stop.latitude, stop.longitude))
-        })
-      }
-      
-      // Add end point
-      routeWaypoints.push(L.latLng(selectedBus.route.endPoint.latitude, selectedBus.route.endPoint.longitude))
-
-      // Create routing control for the complete bus route
-      if (routeWaypoints.length >= 2) {
-        routeControlRef.current = L.Routing.control({
-          waypoints: routeWaypoints,
-          routeWhileDragging: false,
-          addWaypoints: false,
-          createMarker: () => null, // Don't create markers, we have our own
-          lineOptions: {
-            styles: [
-              { color: '#3b82f6', weight: 5, opacity: 0.9 }
-            ]
-          },
-          show: false, // Hide the routing panel
-          collapsible: true,
-          router: L.Routing.osrmv1({
-            serviceUrl: 'https://router.project-osrm.org/route/v1'
-          })
-        }).addTo(map)
-
-        // Add a custom popup to the route
-        routeControlRef.current.on('routesfound', function(e) {
-          const routes = e.routes
-          if (routes.length > 0) {
-            const route = routes[0]
-            const distance = (route.summary.totalDistance / 1000).toFixed(1)
-            const time = Math.round(route.summary.totalTime / 60)
-            
-            // Add popup to the route line
-            setTimeout(() => {
-              if (routeControlRef.current._selectedRoute) {
-                routeControlRef.current._selectedRoute.bindPopup(`
-                  <div style="text-align: center; min-width: 150px;">
-                    <strong>🛣️ Bus Route</strong><br>
-                    <span style="color: #3b82f6; font-weight: bold;">${selectedBus.routeName}</span><br>
-                    <small>📏 ${distance} km • ⏱️ ${time} min</small><br>
-                    <small style="color: #3b82f6;">Real road route</small>
-                  </div>
-                `)
-              }
-            }, 100)
-          }
-        })
-
-        console.log('Bus route created with', routeWaypoints.length, 'waypoints')
-      }
-
-    } catch (error) {
-      console.error('Error creating bus route:', error)
-    }
-  }, [selectedBus])
-
-  // Display complete bus route when bus is selected
-  useEffect(() => {
-    if (!mapInstanceRef.current || !selectedBus) return
-
-    const map = mapInstanceRef.current
-    const L = window.L
-
+    console.log('Creating route from journey details:', journeyDetails)
+    
     try {
       // Clear existing route markers and layers
-      routeMarkersRef.current.forEach(marker => {
+      routeMarkersRef.current.forEach((marker: any) => {
         map.removeLayer(marker)
       })
       routeMarkersRef.current = []
@@ -365,56 +58,50 @@ export function LeafletMap({ selectedBus, busLocation, onLocationUpdate }: Leafl
         map.removeLayer(busRouteLayerRef.current)
       }
 
-      // Get route data
-      const route = selectedBus.route
-      if (!route || !route.startPoint || !route.endPoint) return
+      const waypoints: any[] = []
+      const markers: any[] = []
 
-      // Create waypoints for the complete route
-      const waypoints = []
-      const markers = []
+      // Add from stop
+      if (journeyDetails.fromStop) {
+        waypoints.push([journeyDetails.fromStop.latitude, journeyDetails.fromStop.longitude])
+        
+        const fromMarker = L.marker([journeyDetails.fromStop.latitude, journeyDetails.fromStop.longitude], {
+          icon: L.divIcon({
+            className: 'route-marker start-marker',
+            html: `
+              <div style="
+                background-color: #22c55e;
+                width: 20px;
+                height: 20px;
+                border-radius: 50%;
+                border: 3px solid white;
+                box-shadow: 0 0 10px rgba(34, 197, 94, 0.6);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 10px;
+                color: white;
+                font-weight: bold;
+              ">🚏</div>
+            `,
+            iconSize: [26, 26],
+            iconAnchor: [13, 13]
+          })
+        }).addTo(map)
 
-      // Add start point
-      waypoints.push([route.startPoint.latitude, route.startPoint.longitude])
-      
-      const startMarker = L.marker([route.startPoint.latitude, route.startPoint.longitude], {
-        icon: L.divIcon({
-          className: 'route-marker start-marker',
-          html: `
-            <div style="
-              background-color: #22c55e;
-              width: 20px;
-              height: 20px;
-              border-radius: 50%;
-              border: 3px solid white;
-              box-shadow: 0 0 10px rgba(34, 197, 94, 0.6);
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              font-size: 10px;
-              color: white;
-              font-weight: bold;
-            ">🚏</div>
-          `,
-          iconSize: [26, 26],
-          iconAnchor: [13, 13]
-        })
-      }).addTo(map)
+        fromMarker.bindPopup(`
+          <div style="text-align: center; min-width: 150px;">
+            <strong>🚏 From Stop</strong><br>
+            <span style="color: #22c55e; font-weight: bold;">${journeyDetails.fromStop.name}</span>
+          </div>
+        `)
 
-      startMarker.bindPopup(`
-        <div style="text-align: center; min-width: 150px;">
-          <strong>🚏 Start Point</strong><br>
-          <span style="color: #22c55e; font-weight: bold;">${route.startPoint.name}</span><br>
-          <small>Route: ${selectedBus.routeName}</small>
-        </div>
-      `)
-
-      markers.push(startMarker)
+        markers.push(fromMarker)
+      }
 
       // Add intermediate stops
-      if (route.stops && route.stops.length > 0) {
-        const sortedStops = [...route.stops].sort((a, b) => a.order - b.order)
-        
-        sortedStops.forEach((stop, index) => {
+      if (journeyDetails.stopsInBetween && journeyDetails.stopsInBetween.length > 0) {
+        journeyDetails.stopsInBetween.forEach((stop: any, index: number) => {
           waypoints.push([stop.latitude, stop.longitude])
           
           const stopMarker = L.marker([stop.latitude, stop.longitude], {
@@ -434,7 +121,7 @@ export function LeafletMap({ selectedBus, busLocation, onLocationUpdate }: Leafl
                   font-size: 8px;
                   color: white;
                   font-weight: bold;
-                ">${stop.order}</div>
+                ">${index + 1}</div>
               `,
               iconSize: [22, 22],
               iconAnchor: [11, 11]
@@ -443,9 +130,8 @@ export function LeafletMap({ selectedBus, busLocation, onLocationUpdate }: Leafl
 
           stopMarker.bindPopup(`
             <div style="text-align: center; min-width: 120px;">
-              <strong>🚌 Stop ${stop.order}</strong><br>
-              <span style="color: #3b82f6; font-weight: bold;">${stop.name}</span><br>
-              <small>Route: ${selectedBus.routeName}</small>
+              <strong>🚌 Stop ${index + 1}</strong><br>
+              <span style="color: #3b82f6; font-weight: bold;">${stop.name}</span>
             </div>
           `)
 
@@ -453,42 +139,43 @@ export function LeafletMap({ selectedBus, busLocation, onLocationUpdate }: Leafl
         })
       }
 
-      // Add end point
-      waypoints.push([route.endPoint.latitude, route.endPoint.longitude])
-      
-      const endMarker = L.marker([route.endPoint.latitude, route.endPoint.longitude], {
-        icon: L.divIcon({
-          className: 'route-marker end-marker',
-          html: `
-            <div style="
-              background-color: #ef4444;
-              width: 20px;
-              height: 20px;
-              border-radius: 50%;
-              border: 3px solid white;
-              box-shadow: 0 0 10px rgba(239, 68, 68, 0.6);
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              font-size: 10px;
-              color: white;
-              font-weight: bold;
-            ">🏁</div>
-          `,
-          iconSize: [26, 26],
-          iconAnchor: [13, 13]
-        })
-      }).addTo(map)
+      // Add to stop
+      if (journeyDetails.toStop) {
+        waypoints.push([journeyDetails.toStop.latitude, journeyDetails.toStop.longitude])
+        
+        const toMarker = L.marker([journeyDetails.toStop.latitude, journeyDetails.toStop.longitude], {
+          icon: L.divIcon({
+            className: 'route-marker end-marker',
+            html: `
+              <div style="
+                background-color: #ef4444;
+                width: 20px;
+                height: 20px;
+                border-radius: 50%;
+                border: 3px solid white;
+                box-shadow: 0 0 10px rgba(239, 68, 68, 0.6);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 10px;
+                color: white;
+                font-weight: bold;
+              ">🏁</div>
+            `,
+            iconSize: [26, 26],
+            iconAnchor: [13, 13]
+          })
+        }).addTo(map)
 
-      endMarker.bindPopup(`
-        <div style="text-align: center; min-width: 150px;">
-          <strong>🏁 End Point</strong><br>
-          <span style="color: #ef4444; font-weight: bold;">${route.endPoint.name}</span><br>
-          <small>Route: ${selectedBus.routeName}</small>
-        </div>
-      `)
+        toMarker.bindPopup(`
+          <div style="text-align: center; min-width: 150px;">
+            <strong>🏁 To Stop</strong><br>
+            <span style="color: #ef4444; font-weight: bold;">${journeyDetails.toStop.name}</span>
+          </div>
+        `)
 
-      markers.push(endMarker)
+        markers.push(toMarker)
+      }
 
       // Store markers for cleanup
       routeMarkersRef.current = markers
@@ -496,226 +183,530 @@ export function LeafletMap({ selectedBus, busLocation, onLocationUpdate }: Leafl
       // Create route line
       if (waypoints.length > 1) {
         busRouteLayerRef.current = L.polyline(waypoints, {
-          color: '#f59e0b',
-          weight: 3,
-          opacity: 0.6,
-          dashArray: '15, 10'
+          color: '#3b82f6',
+          weight: 4,
+          opacity: 0.8
         }).addTo(map)
 
         busRouteLayerRef.current.bindPopup(`
           <div style="text-align: center;">
-            <strong>${selectedBus.routeName}</strong><br>
-            <small>${route.startPoint.name} → ${route.endPoint.name}</small><br>
-            <small style="color: #f59e0b;">🗺️ Static Route Path</small>
+            <strong>🛣️ Journey Route</strong><br>
+            <small>${journeyDetails.fromStop.name} → ${journeyDetails.toStop.name}</small><br>
+            <small>⏱️ ${journeyDetails.estimatedJourneyTime}</small>
           </div>
         `)
       }
 
-      // Fit map to show the complete route
-      if (waypoints.length > 0) {
+      // Fit map to show the route
+      if (markers.length > 0) {
         const group = new L.featureGroup(markers)
         map.fitBounds(group.getBounds().pad(0.1))
       }
 
+      console.log('Journey route created successfully')
     } catch (error) {
-      console.error('Error displaying bus route:', error)
+      console.error('Error creating journey route:', error)
     }
-  }, [selectedBus])
+  }
 
   const centerOnUser = () => {
-    if (userLocation && mapInstanceRef.current) {
-      mapInstanceRef.current.setView([userLocation.lat, userLocation.lng], 16)
-      setIsTrackingUser(false)
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords
+          setUserLocation({ latitude, longitude })
+          
+          if (mapInstanceRef.current) {
+            mapInstanceRef.current.setView([latitude, longitude], 16)
+            
+            if (userMarkerRef.current) {
+              mapInstanceRef.current.removeLayer(userMarkerRef.current)
+            }
+            
+            userMarkerRef.current = window.L.marker([latitude, longitude], {
+              icon: window.L.divIcon({
+                className: 'user-location-marker',
+                html: `
+                  <div style="
+                    background-color: #4ade80;
+                    width: 16px;
+                    height: 16px;
+                    border-radius: 50%;
+                    border: 3px solid white;
+                    box-shadow: 0 0 10px rgba(74, 222, 128, 0.8);
+                  "></div>
+                `,
+                iconSize: [22, 22],
+                iconAnchor: [11, 11]
+              })
+            }).addTo(mapInstanceRef.current)
+            
+            userMarkerRef.current.bindPopup("📍 Your Location")
+            
+            onLocationUpdate?.({ latitude, longitude })
+          }
+        },
+        (error) => {
+          console.error('Error getting location:', error)
+          setMapError('Unable to get your location. Please enable location services.')
+        }
+      )
+    } else {
+      setMapError('Geolocation is not supported by this browser.')
     }
   }
 
-  const centerOnBus = () => {
-    if (busLocation && mapInstanceRef.current) {
-      mapInstanceRef.current.setView([busLocation.latitude, busLocation.longitude], 16)
-      setIsTrackingUser(true)
+  const addRouteToMap = () => {
+    if (!mapInstanceRef.current || !selectedBus) return
+
+    const L = window.L
+    const map = mapInstanceRef.current
+
+    console.log('Selected bus data:', selectedBus)
+    console.log('Route data available:', selectedBus.route)
+
+    // Clear existing route
+    if (routeControlRef.current) {
+      map.removeControl(routeControlRef.current)
+      routeControlRef.current = null
+    }
+
+    // Clear existing markers
+    routeMarkersRef.current.forEach((marker: any) => {
+      map.removeLayer(marker)
+    })
+    routeMarkersRef.current = []
+
+    if (busRouteLayerRef.current) {
+      map.removeLayer(busRouteLayerRef.current)
+      busRouteLayerRef.current = null
+    }
+
+    try {
+      // Method 1: Try using bus route data if available
+      if (selectedBus.route && selectedBus.route.startPoint && selectedBus.route.endPoint) {
+        console.log('Using bus route data:', selectedBus.route)
+        
+        const startLatLng = [selectedBus.route.startPoint.latitude, selectedBus.route.startPoint.longitude]
+        const endLatLng = [selectedBus.route.endPoint.latitude, selectedBus.route.endPoint.longitude]
+        
+        console.log('Start point:', startLatLng)
+        console.log('End point:', endLatLng)
+
+        // Create waypoints array including stops
+        const waypoints = [L.latLng(startLatLng[0], startLatLng[1])]
+        
+        if (selectedBus.route.stops && selectedBus.route.stops.length > 0) {
+          // Sort stops by order if available
+          const sortedStops = selectedBus.route.stops.sort((a: any, b: any) => {
+            if (a.order && b.order) return a.order - b.order
+            return 0
+          })
+          
+          sortedStops.forEach((stop: any) => {
+            if (stop.latitude && stop.longitude) {
+              waypoints.push(L.latLng(stop.latitude, stop.longitude))
+            }
+          })
+        }
+        
+        waypoints.push(L.latLng(endLatLng[0], endLatLng[1]))
+        
+        console.log('Creating route with waypoints:', waypoints)
+
+        // Try OSRM routing
+        try {
+          routeControlRef.current = L.Routing.control({
+            waypoints: waypoints,
+            routeWhileDragging: false,
+            addWaypoints: false,
+            createMarker: function(i: number, waypoint: any) {
+              const isStart = i === 0
+              const isEnd = i === waypoints.length - 1
+              
+              return L.marker(waypoint.latLng, {
+                icon: L.divIcon({
+                  className: isStart ? 'route-marker start-marker' : isEnd ? 'route-marker end-marker' : 'route-marker stop-marker',
+                  html: `
+                    <div style="
+                      background-color: ${isStart ? '#22c55e' : isEnd ? '#ef4444' : '#3b82f6'};
+                      width: ${isStart || isEnd ? '20px' : '16px'};
+                      height: ${isStart || isEnd ? '20px' : '16px'};
+                      border-radius: 50%;
+                      border: ${isStart || isEnd ? '3px' : '2px'} solid white;
+                      box-shadow: 0 0 ${isStart || isEnd ? '10px' : '8px'} rgba(${isStart ? '34, 197, 94' : isEnd ? '239, 68, 68' : '59, 130, 246'}, 0.6);
+                      display: flex;
+                      align-items: center;
+                      justify-content: center;
+                      font-size: ${isStart || isEnd ? '10px' : '8px'};
+                      color: white;
+                      font-weight: bold;
+                    ">${isStart ? '🚏' : isEnd ? '🏁' : i}</div>
+                  `,
+                  iconSize: [isStart || isEnd ? 26 : 20, isStart || isEnd ? 26 : 20],
+                  iconAnchor: [isStart || isEnd ? 13 : 10, isStart || isEnd ? 13 : 10]
+                })
+              })
+            },
+            lineOptions: {
+              styles: [
+                { color: '#3b82f6', weight: 6, opacity: 0.8 },
+                { color: '#1e40af', weight: 4, opacity: 1 }
+              ]
+            },
+            show: false,
+            router: L.Routing.osrmv1({
+              serviceUrl: 'https://router.project-osrm.org/route/v1'
+            })
+          }).addTo(map)
+
+          // Listen for route found
+          routeControlRef.current.on('routesfound', function(e: any) {
+            console.log('OSRM route found:', e.routes)
+            const route = e.routes[0]
+            console.log('Route summary:', route.summary)
+            
+            // Fit bounds to show the entire route
+            map.fitBounds(L.latLngBounds(waypoints).pad(0.1))
+          })
+
+          // Listen for errors
+          routeControlRef.current.on('routingerror', function(e: any) {
+            console.error('OSRM routing error:', e)
+            // Fallback to simple line
+            createFallbackRoute(waypoints, map, L)
+          })
+
+          console.log('OSRM routing control added to map')
+          
+        } catch (routingError) {
+          console.error('Error creating OSRM route:', routingError)
+          // Fallback to simple line
+          createFallbackRoute(waypoints, map, L)
+        }
+        
+      } else {
+        console.log('No route data available, trying journey details...')
+        
+        // Method 2: Check if it's journey details format
+        if (selectedBus.journeyDetails) {
+          console.log('Creating route from journey details')
+          createJourneyRoute(selectedBus.journeyDetails)
+        } else {
+          console.log('No route information available for this bus')
+        }
+      }
+      
+    } catch (error) {
+      console.error('Error adding route to map:', error)
+      setMapError('Failed to add route to map. Please try again.')
     }
   }
 
-  const calculateETA = () => {
-    if (!userLocation || !busLocation) return "N/A"
+  // Fallback route creation
+  const createFallbackRoute = (waypoints: any[], map: any, L: any) => {
+    console.log('Creating fallback route with simple line')
+    
+    try {
+      // Create simple polyline
+      const latLngs = waypoints.map((wp: any) => [wp.lat, wp.lng])
+      
+      busRouteLayerRef.current = L.polyline(latLngs, {
+        color: '#3b82f6',
+        weight: 4,
+        opacity: 0.8,
+        dashArray: '5, 5'
+      }).addTo(map)
 
-    const distance = Math.sqrt(
-      Math.pow(busLocation.latitude - userLocation.lat, 2) + 
-      Math.pow(busLocation.longitude - userLocation.lng, 2)
-    ) * 111000 // Rough conversion to meters
+      // Add markers manually
+      waypoints.forEach((waypoint: any, i: number) => {
+        const isStart = i === 0
+        const isEnd = i === waypoints.length - 1
+        
+        const marker = L.marker([waypoint.lat, waypoint.lng], {
+          icon: L.divIcon({
+            className: isStart ? 'route-marker start-marker' : isEnd ? 'route-marker end-marker' : 'route-marker stop-marker',
+            html: `
+              <div style="
+                background-color: ${isStart ? '#22c55e' : isEnd ? '#ef4444' : '#3b82f6'};
+                width: ${isStart || isEnd ? '20px' : '16px'};
+                height: ${isStart || isEnd ? '20px' : '16px'};
+                border-radius: 50%;
+                border: ${isStart || isEnd ? '3px' : '2px'} solid white;
+                box-shadow: 0 0 ${isStart || isEnd ? '10px' : '8px'} rgba(${isStart ? '34, 197, 94' : isEnd ? '239, 68, 68' : '59, 130, 246'}, 0.6);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: ${isStart || isEnd ? '10px' : '8px'};
+                color: white;
+                font-weight: bold;
+              ">${isStart ? '🚏' : isEnd ? '🏁' : i}</div>
+            `,
+            iconSize: [isStart || isEnd ? 26 : 20, isStart || isEnd ? 26 : 20],
+            iconAnchor: [isStart || isEnd ? 13 : 10, isStart || isEnd ? 13 : 10]
+          })
+        }).addTo(map)
 
-    const speed = busLocation.speed || 20
-    const timeMinutes = Math.round((distance / 1000 / speed) * 60)
+        marker.bindPopup(isStart ? 'Start Point' : isEnd ? 'End Point' : `Stop ${i}`)
+        routeMarkersRef.current.push(marker)
+      })
 
-    return timeMinutes > 0 ? `${timeMinutes} min` : "Arriving"
+      // Fit bounds
+      map.fitBounds(L.latLngBounds(waypoints).pad(0.1))
+      
+      console.log('Fallback route created successfully')
+      
+    } catch (error) {
+      console.error('Error creating fallback route:', error)
+    }
   }
 
-  if (!isMapLoaded && !mapError) {
-    return (
-      <Card className="h-[70vh] md:h-[80vh]">
-        <CardContent className="flex items-center justify-center h-full">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-            <p className="text-lg font-medium text-muted-foreground">Loading map and routing...</p>
-            <p className="text-sm text-muted-foreground mt-2">Please wait a moment</p>
-          </div>
-        </CardContent>
-      </Card>
-    )
+  const initializeMap = () => {
+    if (!mapRef.current || mapInstanceRef.current) return
+
+    try {
+      const L = window.L
+      
+      // Create map with ESRI tiles (more reliable)
+      const map = L.map(mapRef.current, {
+        center: [28.6139, 77.2090], // Delhi coordinates
+        zoom: 12,
+        zoomControl: true,
+        attributionControl: true
+      })
+
+      // ESRI World Street Map (more reliable than OpenStreetMap)
+      L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
+        attribution: '&copy; <a href="https://www.esri.com/">Esri</a> &mdash; Source: Esri, DeLorme, NAVTEQ',
+        maxZoom: 19
+      }).addTo(map)
+
+      mapInstanceRef.current = map
+      setIsMapLoaded(true)
+      setMapError(null)
+
+      console.log('Map initialized successfully')
+
+    } catch (error) {
+      console.error('Error initializing map:', error)
+      setMapError('Failed to initialize map. Please refresh the page.')
+    }
   }
 
-  if (mapError) {
-    return (
-      <Card className="h-[70vh] md:h-[80vh]">
-        <CardContent className="flex items-center justify-center h-full">
-          <div className="text-center">
-            <MapPin className="h-16 w-16 text-muted-foreground mx-auto mb-6" />
-            <p className="text-lg font-medium text-foreground mb-2">Map unavailable</p>
-            <p className="text-sm text-muted-foreground mb-4">{mapError}</p>
-            <Button 
-              variant="outline" 
-              size="default" 
-              className="mt-4"
-              onClick={() => window.location.reload()}
-            >
-              Retry Loading
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-    )
+  const loadMapResources = () => {
+    if (window.L) {
+      initializeMap()
+      return
+    }
+
+    // Primary CDN - Leaflet
+    const leafletCSS = document.createElement('link')
+    leafletCSS.rel = 'stylesheet'
+    leafletCSS.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'
+    leafletCSS.integrity = 'sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY='
+    leafletCSS.crossOrigin = ''
+
+    const leafletJS = document.createElement('script')
+    leafletJS.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'
+    leafletJS.integrity = 'sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo='
+    leafletJS.crossOrigin = ''
+
+    // Routing Machine
+    const routingCSS = document.createElement('link')
+    routingCSS.rel = 'stylesheet'
+    routingCSS.href = 'https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css'
+
+    const routingJS = document.createElement('script')
+    routingJS.src = 'https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js'
+
+    let loadedCount = 0
+    const totalToLoad = 4
+
+    const onResourceLoad = () => {
+      loadedCount++
+      if (loadedCount === totalToLoad && window.L) {
+        initializeMap()
+      }
+    }
+
+    const onResourceError = () => {
+      console.error('Failed to load map resources')
+      setMapError('Failed to load map resources. Please check your internet connection.')
+    }
+
+    leafletCSS.onload = onResourceLoad
+    leafletCSS.onerror = onResourceError
+    leafletJS.onload = onResourceLoad
+    leafletJS.onerror = onResourceError
+    routingCSS.onload = onResourceLoad
+    routingCSS.onerror = onResourceError
+    routingJS.onload = onResourceLoad
+    routingJS.onerror = onResourceError
+
+    document.head.appendChild(leafletCSS)
+    document.head.appendChild(leafletJS)
+    document.head.appendChild(routingCSS)
+    document.head.appendChild(routingJS)
+  }
+
+  // Update bus marker when bus location changes
+  useEffect(() => {
+    if (busLocation && mapInstanceRef.current && isMapLoaded) {
+      const L = window.L
+      const map = mapInstanceRef.current
+
+      if (busMarkerRef.current) {
+        map.removeLayer(busMarkerRef.current)
+      }
+
+      busMarkerRef.current = L.marker([busLocation.latitude, busLocation.longitude], {
+        icon: L.divIcon({
+          className: 'bus-marker',
+          html: `
+            <div style="
+              background-color: #f59e0b;
+              width: 30px;
+              height: 30px;
+              border-radius: 50%;
+              border: 3px solid white;
+              box-shadow: 0 0 15px rgba(245, 158, 11, 0.8);
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              font-size: 16px;
+              transform: rotate(${busLocation.heading || 0}deg);
+            ">🚌</div>
+          `,
+          iconSize: [36, 36],
+          iconAnchor: [18, 18]
+        })
+      }).addTo(map)
+
+      busMarkerRef.current.bindPopup(`
+        <div style="text-align: center; min-width: 200px;">
+          <strong>🚌 ${selectedBus?.busNumber || 'Bus'}</strong><br>
+          <small>Speed: ${busLocation.speed || 0} km/h</small><br>
+          <small>Last Updated: ${new Date(busLocation.lastUpdated).toLocaleTimeString()}</small>
+        </div>
+      `)
+    }
+  }, [busLocation, isMapLoaded, selectedBus])
+
+  // Add route when selected bus changes
+  useEffect(() => {
+    if (selectedBus && isMapLoaded) {
+      console.log('Selected bus changed, adding route:', selectedBus)
+      addRouteToMap()
+    }
+  }, [selectedBus, isMapLoaded])
+
+  // Initialize map on component mount
+  useEffect(() => {
+    loadMapResources()
+
+    return () => {
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.remove()
+        mapInstanceRef.current = null
+      }
+    }
+  }, [])
+
+  // Test route creation function
+  const testRouteCreation = () => {
+    console.log('Testing route creation with current bus data...')
+    if (selectedBus) {
+      console.log('Selected bus for testing:', selectedBus)
+      addRouteToMap()
+    } else {
+      console.log('No bus selected for testing')
+    }
   }
 
   return (
-    <div className="space-y-4">
-      {/* Fullscreen Map Container */}
-      <Card className="overflow-hidden">
-        <div 
-          ref={mapRef} 
-          className="h-[70vh] md:h-[80vh] w-full"
-          style={{
-            background: '#f0f0f0',
-            minHeight: '500px'
-          }}
-        />
-      </Card>
-
-      {/* Map Controls */}
-      <div className="flex flex-wrap gap-2">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={centerOnUser}
-          disabled={!userLocation}
-          className="flex-1 min-w-[120px] bg-transparent"
-        >
-          <Navigation className="h-4 w-4 mr-2" />
-          My Location
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={centerOnBus}
-          disabled={!busLocation}
-          className="flex-1 min-w-[120px] bg-transparent"
-        >
-          <MapPin className="h-4 w-4 mr-2" />
-          Bus Location
-        </Button>
-        {selectedBus?.route && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              if (mapInstanceRef.current && routeMarkersRef.current.length > 0) {
-                const group = new window.L.featureGroup(routeMarkersRef.current)
-                mapInstanceRef.current.fitBounds(group.getBounds().pad(0.1))
-              }
-            }}
-            className="flex-1 min-w-[120px] bg-transparent"
-          >
-            <Zap className="h-4 w-4 mr-2" />
-            Full Route
-          </Button>
-        )}
-      </div>
-
-      {/* Bus Status Card */}
-      {selectedBus && (
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-3 gap-2">
-              <div className="flex items-center gap-2">
-                <div className="bg-primary text-primary-foreground px-3 py-1 rounded text-sm font-medium">
-                  {selectedBus.busNumber}
-                </div>
-                <span
-                  className={`text-sm font-medium ${selectedBus.isDriverOnline ? "text-green-600" : "text-red-600"}`}
-                >
-                  {selectedBus.isDriverOnline ? "Online" : "Offline"}
-                </span>
+    <div className="w-full h-full relative">
+      <Card className="w-full h-full border-0 shadow-lg overflow-hidden">
+        <CardContent className="p-0 h-full relative">
+          {/* Map Container */}
+          <div 
+            ref={mapRef} 
+            className="w-full h-[70vh] md:h-[80vh] bg-gray-100 relative"
+            style={{ minHeight: '500px' }}
+          />
+          
+          {/* Error Message */}
+          {mapError && (
+            <div className="absolute top-4 left-4 right-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded z-[1000]">
+              <strong>Error:</strong> {mapError}
+            </div>
+          )}
+          
+          {/* Loading Indicator */}
+          {!isMapLoaded && !mapError && (
+            <div className="absolute inset-0 bg-gray-100 flex items-center justify-center z-[1000]">
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-4"></div>
+                <p className="text-gray-600">Loading map...</p>
               </div>
-              <div className="text-sm text-muted-foreground">ETA: {calculateETA()}</div>
             </div>
+          )}
 
-            <div className="space-y-2">
-              <p className="font-medium text-foreground">{selectedBus.routeName}</p>
-              <p className="text-sm text-muted-foreground">Driver: {selectedBus.driverName}</p>
-              
-              {/* Route Information */}
-              {selectedBus.route && (
-                <div className="mt-3 p-3 bg-muted/50 rounded-lg">
-                  <div className="text-xs font-medium text-muted-foreground mb-2">ROUTE</div>
-                  <div className="flex items-center gap-2 text-sm">
-                    <span className="text-green-600">🚏 {selectedBus.route.startPoint.name}</span>
-                    <span className="text-muted-foreground">→</span>
-                    <span className="text-red-600">🏁 {selectedBus.route.endPoint.name}</span>
-                  </div>
-                  {selectedBus.route.stops && selectedBus.route.stops.length > 0 && (
-                    <div className="mt-2">
-                      <div className="text-xs text-muted-foreground mb-1">
-                        {selectedBus.route.stops.length} stops
-                      </div>
-                      <div className="flex flex-wrap gap-1">
-                        {selectedBus.route.stops.map((stop, index) => (
-                          <span key={stop._id || index} className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">
-                            {stop.name}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
+          {/* Control Panel */}
+          <div className="absolute top-4 right-4 z-[1000] space-y-2">
+            <Button
+              onClick={centerOnUser}
+              variant="outline"
+              size="sm"
+              className="bg-white/90 hover:bg-white shadow-lg"
+              title="Center on your location"
+            >
+              <Navigation className="h-4 w-4" />
+            </Button>
+            
+            {selectedBus && (
+              <Button
+                onClick={testRouteCreation}
+                variant="outline"
+                size="sm"
+                className="bg-white/90 hover:bg-white shadow-lg"
+                title="Test route creation"
+              >
+                <Zap className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
+
+          {/* Bus Info Panel */}
+          {selectedBus && (
+            <div className="absolute bottom-4 left-4 right-4 bg-white/95 backdrop-blur-sm rounded-lg p-4 shadow-lg z-[1000]">
+              <div className="flex items-center space-x-3">
+                <div className="bg-blue-100 p-2 rounded-full">
+                  <MapPin className="h-5 w-5 text-blue-600" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-semibold text-gray-900 truncate">
+                    Bus {selectedBus.busNumber}
+                  </h3>
+                  <p className="text-sm text-gray-600 truncate">
+                    {selectedBus.journeyDetails?.fromStop?.name || selectedBus.route?.startPoint?.name || 'Route'} → {selectedBus.journeyDetails?.toStop?.name || selectedBus.route?.endPoint?.name || 'Destination'}
+                  </p>
+                  {selectedBus.journeyDetails?.estimatedJourneyTime && (
+                    <p className="text-xs text-gray-500">
+                      ⏱️ {selectedBus.journeyDetails.estimatedJourneyTime}
+                    </p>
                   )}
-                  
-                  {/* Route Legend */}
-                  <div className="mt-3 pt-2 border-t border-muted">
-                    <div className="text-xs font-medium text-muted-foreground mb-2">MAP LEGEND</div>
-                    <div className="space-y-1 text-xs">
-                      <div className="flex items-center gap-2">
-                        <div className="w-3 h-0.5 bg-blue-500 rounded"></div>
-                        <span>Actual road route</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <div className="w-3 h-0.5 bg-orange-400 rounded border-dashed border border-orange-400"></div>
-                        <span>Direct route path</span>
-                      </div>
-                    </div>
+                </div>
+                {busLocation && (
+                  <div className="text-right">
+                    <p className="text-sm font-medium text-green-600">Live</p>
+                    <p className="text-xs text-gray-500">{busLocation.speed || 0} km/h</p>
                   </div>
-                </div>
-              )}
-
-              {busLocation && (
-                <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground mt-3">
-                  <span className="flex items-center gap-1">
-                    <Zap className="h-3 w-3" />
-                    {busLocation.speed} km/h
-                  </span>
-                  <span>Updated: {new Date(busLocation.lastUpdated).toLocaleTimeString()}</span>
-                </div>
-              )}
+                )}
+              </div>
             </div>
-          </CardContent>
-        </Card>
-      )}
+          )}
+        </CardContent>
+      </Card>
     </div>
   )
 }

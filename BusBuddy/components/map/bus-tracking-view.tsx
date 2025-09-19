@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { LeafletMap } from "./leaflet-map-new"
+import { LeafletMap } from "./index"
 import { BusTimeline } from "../timeline/bus-timeline"
 import { useBusTracking } from "@/hooks/use-socket"
 import type { BusSearchResult } from "@/lib/bus-api"
