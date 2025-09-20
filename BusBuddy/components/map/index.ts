@@ -1,1 +1,0 @@
-export { LeafletMap } from "./leaflet-map-new"
