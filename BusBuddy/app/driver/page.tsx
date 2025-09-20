@@ -55,10 +55,16 @@ export default function DriverPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center safe-area-inset">
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-800 flex items-center justify-center safe-area-inset">
         <div className="text-center animate-fade-in">
-          <Bus className="h-12 w-12 text-primary mx-auto mb-4 animate-pulse-subtle" />
-          <p className="text-muted-foreground">Loading...</p>
+          <div className="relative mb-8">
+            <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-400 mx-auto"></div>
+            <div className="absolute inset-0 animate-pulse rounded-full h-16 w-16 border-4 border-blue-200 opacity-20 mx-auto"></div>
+          </div>
+          <div className="flex items-center justify-center space-x-2 text-white/80">
+            <Bus className="h-6 w-6 animate-pulse" />
+            <p className="text-lg font-medium">Loading Dashboard...</p>
+          </div>
         </div>
       </div>
     )
@@ -74,55 +80,101 @@ export default function DriverPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background safe-area-inset">
-      {/* Header */}
-      <header className="bg-primary text-primary-foreground p-4 sticky top-0 z-10 pwa-safe-area animate-slide-down">
-        <div className="flex items-center justify-between max-w-md mx-auto">
-          <div className="flex items-center gap-2">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-800 safe-area-inset">
+      {/* Professional Header with Glass Effect */}
+      <header className="relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-r from-blue-600/30 to-purple-600/30 backdrop-blur-xl"></div>
+        <div className="absolute inset-0 opacity-30" style={{
+          backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%239C92AC' fill-opacity='0.1'%3E%3Ccircle cx='30' cy='30' r='2'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
+        }}></div>
+        
+        <div className="relative p-6 sticky top-0 z-10 border-b border-white/10">
+          <div className="flex items-center justify-between max-w-6xl mx-auto">
+            <div className="flex items-center space-x-4">
+              <button
+                onClick={handleBackToHome}
+                className="group flex items-center space-x-2 text-white/80 hover:text-white transition-all duration-300 transform hover:scale-105"
+              >
+                <div className="p-2 rounded-xl bg-white/10 backdrop-blur-sm group-hover:bg-white/20 transition-all duration-300 border border-white/20">
+                  <ArrowLeft className="h-5 w-5" />
+                </div>
+              </button>
+              
+              <div className="flex items-center space-x-3">
+                <div className="p-3 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 shadow-xl">
+                  <Bus className="h-8 w-8 text-white" />
+                </div>
+                <div>
+                  <h1 className="text-2xl font-bold text-white tracking-tight">Driver Dashboard</h1>
+                  <p className="text-sm text-blue-200">Professional Transit Control System</p>
+                </div>
+              </div>
+            </div>
+            
             <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleBackToHome}
-              className="text-primary-foreground hover:bg-primary-foreground/20 p-1 touch-friendly animate-scale-in"
+              onClick={handleLogout}
+              className="px-6 py-3 bg-gradient-to-r from-red-500 to-pink-600 hover:from-red-600 hover:to-pink-700 text-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 border-0 font-medium"
             >
-              <ArrowLeft className="h-5 w-5" />
+              Logout
             </Button>
-            <Bus className="h-6 w-6" />
-            <h1 className="text-lg sm:text-xl font-bold text-balance">Driver Dashboard</h1>
           </div>
-          <Button variant="secondary" size="sm" onClick={handleLogout} className="touch-friendly hover-lift">
-            Logout
-          </Button>
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="p-3 sm:p-4 max-w-md mx-auto space-y-4 animate-fade-in">
-        {/* Debug info */}
-        <div className="bg-gray-100 p-2 rounded text-xs">
-          <pre>{JSON.stringify(driverSession, null, 2)}</pre>
-        </div>
-        
-        <div className="animate-slide-up">
-          <BusInfo
-            busId={driverSession.busId}
-            busNumber={driverSession.busInfo?.busNumber || "Unknown"}
-            routeName={driverSession.busInfo?.routeName || "Unknown Route"}
-            driverName={driverSession.busInfo?.driverName || "Unknown Driver"}
-            driverPhone={driverSession.busInfo?.driverPhone || ""}
-          />
+      {/* Main Content with Glass Cards */}
+      <main className="p-6 max-w-7xl mx-auto space-y-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Driver Info Card */}
+          <div className="lg:col-span-1 backdrop-blur-xl bg-white/10 rounded-3xl border border-white/20 shadow-2xl p-6 hover:bg-white/15 transition-all duration-300">
+            <div className="flex items-center space-x-4 mb-6">
+              <div className="p-3 rounded-xl bg-gradient-to-br from-green-400 to-emerald-600 shadow-lg">
+                <svg className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+              </div>
+              <h2 className="text-xl font-bold text-white">Driver Info</h2>
+            </div>
+            
+            <BusInfo
+              busId={driverSession.busId}
+              busNumber={driverSession.busInfo?.busNumber || "Unknown"}
+              routeName={driverSession.busInfo?.routeName || "Unknown Route"}
+              driverName={driverSession.busInfo?.driverName || "Unknown Driver"}
+              driverPhone={driverSession.busInfo?.driverPhone || ""}
+            />
+          </div>
+
+          {/* Trip Controls Card */}
+          <div className="lg:col-span-2 backdrop-blur-xl bg-white/10 rounded-3xl border border-white/20 shadow-2xl p-6 hover:bg-white/15 transition-all duration-300">
+            <div className="flex items-center space-x-4 mb-6">
+              <div className="p-3 rounded-xl bg-gradient-to-br from-purple-400 to-violet-600 shadow-lg">
+                <svg className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+              </div>
+              <h2 className="text-xl font-bold text-white">Trip Controls</h2>
+            </div>
+            
+            <TripControls
+              busId={driverSession.busId}
+              token={driverSession.token}
+              driverName={driverSession.busInfo?.driverName || "Unknown Driver"}
+              onTripEnd={handleTripEnd}
+            />
+          </div>
         </div>
 
-        <div className="animate-slide-up" style={{ animationDelay: "100ms" }}>
-          <TripControls
-            busId={driverSession.busId}
-            token={driverSession.token}
-            driverName={driverSession.busInfo?.driverName || "Unknown Driver"}
-            onTripEnd={handleTripEnd}
-          />
-        </div>
-
-        <div className="animate-slide-up" style={{ animationDelay: "200ms" }}>
+        {/* Connection Status Card */}
+        <div className="backdrop-blur-xl bg-white/10 rounded-3xl border border-white/20 shadow-2xl p-6 hover:bg-white/15 transition-all duration-300">
+          <div className="flex items-center space-x-4 mb-6">
+            <div className="p-3 rounded-xl bg-gradient-to-br from-amber-400 to-orange-600 shadow-lg">
+              <svg className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0" />
+              </svg>
+            </div>
+            <h2 className="text-xl font-bold text-white">Connection Status</h2>
+          </div>
+          
           <DriverConnectionDebug
             token={driverSession.token}
             busId={driverSession.busId}
