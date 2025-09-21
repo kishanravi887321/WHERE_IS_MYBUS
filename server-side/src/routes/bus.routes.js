@@ -6,6 +6,7 @@ import {
     updateBus,
     deleteBus,
     getBusLocationHistory,
+    makeTheBusRoute,
     getActiveBusesStatus,
     searchBuses,
     getBusesByBoardingStop,
@@ -18,6 +19,7 @@ const router = Router();
 // Public routes (no authentication required for passengers)
 router.route("/search").get(searchBuses);
 router.route("/active").get(getActiveBusesStatus);
+router.route("/make-route").post(makeTheBusRoute);
 router.route("/stop/:stopName").get(getBusesByBoardingStop);
 router.route("/route/:fromStop/:toStop").get(getBusesFromStopToStop);
 router.route("/").get(getAllBuses);
