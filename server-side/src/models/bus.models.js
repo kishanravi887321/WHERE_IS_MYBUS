@@ -1,10 +1,9 @@
 import mongoose, { Schema } from "mongoose";
 
 const busSchema = new Schema({
-    ownerEmail:{
-        type:String,
-        required:true,
-       
+    ownerEmail: {
+        type: String,
+        required: true,
     },
     busId: {
         type: String,
@@ -33,10 +32,10 @@ const busSchema = new Schema({
         required: true,
         trim: true
     },
-    secretKey:{
-        type:String,
-        required:true,
-        trim:true
+    secretKey: {
+        type: String,
+        required: true,
+        trim: true
     },
     capacity: {
         type: Number,
@@ -48,18 +47,9 @@ const busSchema = new Schema({
         default: false
     },
     currentLocation: {
-        latitude: {
-            type: Number,
-            default: null
-        },
-        longitude: {
-            type: Number,
-            default: null
-        },
-        lastUpdated: {
-            type: Date,
-            default: Date.now
-        }
+        latitude: { type: Number, default: null },
+        longitude: { type: Number, default: null },
+        lastUpdated: { type: Date, default: Date.now }
     },
     route: {
         startPoint: {
@@ -77,6 +67,12 @@ const busSchema = new Schema({
             latitude: Number,
             longitude: Number,
             order: Number
+        }],
+        // Store full recorded coordinates here
+        routeCoordinates: [{
+            latitude: { type: Number, required: true },
+            longitude: { type: Number, required: true },
+            timestamp: { type: Date, default: Date.now }
         }]
     }
 }, { 

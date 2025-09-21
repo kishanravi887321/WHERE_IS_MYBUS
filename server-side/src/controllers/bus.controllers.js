@@ -797,7 +797,38 @@ export  const MakeTheBusActive = asyncHandler(async (req, res) => {
     return res.status(200).json({ message: "Bus activated successfully" , token:token,busInfo:bus});
 });
 
+export const makeTheBusRoute = asyncHandler(async (req, res) => {
+    const { routeCoordinates } = req.body;
+    console.log(req.body, "u hited the make route");
+
+    if (!routeCoordinates) {
+        return res.status(400).json({ message: "routeCoordinates are required" });
+    }
+
+    // Find the bus by busId
+    const bus = await Bus.findOne({ busId: "BUS111" });
+    if (!bus) {
+        return res.status(404).json({ message: "Bus not found" });
+    }
+
+    // Update only the routeCoordinates
+    bus.route.routeCoordinates = routeCoordinates.map(coord => ({
+        latitude: coord.lat,
+        longitude: coord.lng,
+        timestamp: coord.timestamp ? new Date(coord.timestamp) : new Date()
+    }));
+
+    await bus.save();
+
+    return res.status(200).json({
+        message: `Bus route coordinates updated successfully for BUS111`,
+        routeCoordinates: bus.route.routeCoordinates
+    });
+});
+
+
 export {
+  
     createBus,
     getAllBuses,
     getBusById,
