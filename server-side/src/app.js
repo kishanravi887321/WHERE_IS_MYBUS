@@ -14,6 +14,9 @@ app.use("/api/buses", busRouter);
 app.get('/' , (req, res) => {
     res.send("hello from where is my bus  sockets+express server");
 });
+app.get('/activate' , (req, res) => {
+    res.send("server is activation successful");
+});
   // to parse the json data coming from the client side
 app.use(errorHandler);
 
