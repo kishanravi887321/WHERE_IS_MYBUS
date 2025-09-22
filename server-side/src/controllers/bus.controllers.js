@@ -818,7 +818,8 @@ export const makeTheBusRoute = asyncHandler(async (req, res) => {
     const tolerance = 0.00005; // adjust as needed
     const highQuality = true; // preserves important points
     const simplifiedPoints = simplify(points, tolerance, highQuality);
-    console.log(simplifiedPoints)
+    const simplifiedArr = simplifiedPoints.map(p => [p.y, p.x]); // [lat, lng]
+    console.log("Simplified route coordinates:", simplifiedArr);
 
     console.log("Original points:", points.length, "Simplified points:", simplifiedPoints.length);
 
