@@ -798,8 +798,12 @@ export  const MakeTheBusActive = asyncHandler(async (req, res) => {
 });
 
 export const makeTheBusRoute = asyncHandler(async (req, res) => {
-    const { routeCoordinates } = req.body;
-    console.log(req.body, "u hited the make route");
+   const { routeCoordinates } = req.body;
+
+// Convert to array of arrays [lat, lng]
+const simplifiedRoute = routeCoordinates.map(point => [point.lat, point.lng]);
+
+console.log(simplifiedRoute, "Simplified route coordinates");
 
     if (!routeCoordinates) {
         return res.status(400).json({ message: "routeCoordinates are required" });
