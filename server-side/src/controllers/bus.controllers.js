@@ -6,6 +6,7 @@ import { ApiResponse } from "../utils/ApiResponse.js";
 import { getActiveBuses, isDriverOnline } from "../sockets_services/bus.sockets_services.js";
 import { getBusPassengerCounts } from "../sockets_services/client.sockets_services.js";
 import { redisClient } from "../db/redis.db.js";
+import simplify from "simplify-js";
 
 // Create a new bus
 const createBus = asyncHandler(async (req, res) => {
@@ -798,16 +799,28 @@ export  const MakeTheBusActive = asyncHandler(async (req, res) => {
 });
 
 export const makeTheBusRoute = asyncHandler(async (req, res) => {
-   const { routeCoordinates } = req.body;
+    const { routeCoordinates } = req.body;
 
-// Convert to array of arrays [lat, lng]
-const simplifiedRoute = routeCoordinates.map(point => [point.lat, point.lng]);
-
-console.log(simplifiedRoute, "Simplified route coordinates");
-
-    if (!routeCoordinates) {
+    if (!routeCoordinates || routeCoordinates.length === 0) {
         return res.status(400).json({ message: "routeCoordinates are required" });
     }
+
+    // Convert to format for simplify-js: {x: lng, y: lat}
+    const points = routeCoordinates.map(coord => ({
+        x: coord.lng,
+        y: coord.lat,
+        timestamp: coord.time ? new Date(coord.time) : new Date(),
+        accuracy: coord.accuracy
+    }));
+
+    // Perform Douglas-Peucker simplification
+    // tolerance can be adjusted (in coordinate units, roughly ~0.00001 ~ 1m)
+    const tolerance = 0.00005; // adjust as needed
+    const highQuality = true; // preserves important points
+    const simplifiedPoints = simplify(points, tolerance, highQuality);
+    console.log(simplifiedPoints)
+
+    console.log("Original points:", points.length, "Simplified points:", simplifiedPoints.length);
 
     // Find the bus by busId
     const bus = await Bus.findOne({ busId: "BUS111" });
@@ -815,11 +828,12 @@ console.log(simplifiedRoute, "Simplified route coordinates");
         return res.status(404).json({ message: "Bus not found" });
     }
 
-    // Update only the routeCoordinates
-    bus.route.routeCoordinates = routeCoordinates.map(coord => ({
-        latitude: coord.lat,
-        longitude: coord.lng,
-        timestamp: coord.timestamp ? new Date(coord.timestamp) : new Date()
+    // Update only the routeCoordinates in the DB
+    bus.route.routeCoordinates = simplifiedPoints.map(coord => ({
+        latitude: coord.y,
+        longitude: coord.x,
+        timestamp: coord.timestamp,
+        accuracy: coord.accuracy
     }));
 
     await bus.save();
@@ -829,7 +843,6 @@ console.log(simplifiedRoute, "Simplified route coordinates");
         routeCoordinates: bus.route.routeCoordinates
     });
 });
-
 
 export {
   
