@@ -815,7 +815,7 @@ export const makeTheBusRoute = asyncHandler(async (req, res) => {
 
     // Perform Douglas-Peucker simplification
     // tolerance can be adjusted (in coordinate units, roughly ~0.00001 ~ 1m)
-    const tolerance = 0.00005; // adjust as needed
+    const tolerance = 0.00001; // adjust as needed
     const highQuality = true; // preserves important points
     const simplifiedPoints = simplify(points, tolerance, highQuality);
     const simplifiedArr = simplifiedPoints.map(p => [p.y, p.x]); // [lat, lng]
