@@ -820,6 +820,7 @@ export const makeTheBusRoute = asyncHandler(async (req, res) => {
     const simplifiedPoints = simplify(points, tolerance, highQuality);
     const simplifiedArr = simplifiedPoints.map(p => [p.y, p.x]); // [lat, lng]
     console.log("Simplified route coordinates:", simplifiedArr);
+    // console the actual number of points reduced
 
     console.log("Original points:", points.length, "Simplified points:", simplifiedPoints.length);
 
