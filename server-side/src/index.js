@@ -17,6 +17,8 @@ console.log("DB_URL:", process.env.DB_URL ? "✅ Loaded" : "❌ Not found");
 
 const PORT = process.env.PORT || 8000;
 
+export const gemini = process.env.GEMINI_API_KEY;
+
 const startServer = async () => {
   try {
     // 1️⃣ Connect MongoDB
