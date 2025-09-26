@@ -799,10 +799,15 @@ export  const MakeTheBusActive = asyncHandler(async (req, res) => {
 });
 
 export const makeTheBusRoute = asyncHandler(async (req, res) => {
-    const { routeCoordinates } = req.body;
+    const { busId, routeCoordinates } = req.body;
+
+     console.log(`the busId is  `,busId)
 
     if (!routeCoordinates || routeCoordinates.length === 0) {
         return res.status(400).json({ message: "routeCoordinates are required" });
+    }
+    if (!busId ) {
+        return res.status(400).json({ message: "busId is required" });
     }
 
     // Convert to format for simplify-js: {x: lng, y: lat}
@@ -812,6 +817,12 @@ export const makeTheBusRoute = asyncHandler(async (req, res) => {
         timestamp: coord.time ? new Date(coord.time) : new Date(),
         accuracy: coord.accuracy
     }));
+    const bus = await Bus.findOne({ busId: busId });
+    if (!bus) {
+        console.log('bus not found');
+        return res.status(404).json({ message: "Bus not found" });
+    }
+
 
     // Perform Douglas-Peucker simplification
     // tolerance can be adjusted (in coordinate units, roughly ~0.00001 ~ 1m)
@@ -825,10 +836,7 @@ export const makeTheBusRoute = asyncHandler(async (req, res) => {
     console.log("Original points:", points.length, "Simplified points:", simplifiedPoints.length);
 
     // Find the bus by busId
-    const bus = await Bus.findOne({ busId: "BUS111" });
-    if (!bus) {
-        return res.status(404).json({ message: "Bus not found" });
-    }
+    
 
     // Update only the routeCoordinates in the DB
     bus.route.routeCoordinates = simplifiedPoints.map(coord => ({
