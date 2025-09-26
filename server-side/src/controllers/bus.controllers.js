@@ -6,6 +6,7 @@ import { ApiResponse } from "../utils/ApiResponse.js";
 import { getActiveBuses, isDriverOnline } from "../sockets_services/bus.sockets_services.js";
 import { getBusPassengerCounts } from "../sockets_services/client.sockets_services.js";
 import { redisClient } from "../db/redis.db.js";
+import GeminiService from "../services/gemini.service.js";
 import { Organization } from "../models/org.models.js";
 import simplify from "simplify-js";
 
@@ -233,16 +234,68 @@ const getActiveBusesStatus = asyncHandler(async (req, res) => {
 
 // Search buses by route or location
 const searchBuses = asyncHandler(async (req, res) => {
-    const { query, latitude, longitude, radius = 5 } = req.query;
+    const { query, latitude, longitude, radius = 5, translateHindi = true } = req.query;
 
     let searchFilter = { isActive: true };
+    let translatedQuery = query;
+    let translationInfo = null;
 
+    // Enhanced search with Hindi translation support
     if (query) {
-        searchFilter.$or = [
-            { busNumber: { $regex: query, $options: 'i' } },
-            { routeName: { $regex: query, $options: 'i' } },
-            { driverName: { $regex: query, $options: 'i' } }
-        ];
+        try {
+            // Check if translation is needed and enabled
+            if (translateHindi && query.trim()) {
+                // Use Gemini to translate Hindi city names to English
+                const translationResult = await GeminiService.processSearchQuery(query.trim());
+                translatedQuery = translationResult.translated;
+                translationInfo = {
+                    original: translationResult.original,
+                    translated: translationResult.translated,
+                    searchVariations: translationResult.searchVariations,
+                    confidence: translationResult.confidence,
+                    wasTranslated: translationResult.original !== translationResult.translated
+                };
+
+                // Build enhanced search filter with multiple variations
+                const searchTerms = translationResult.searchVariations;
+                const searchConditions = [];
+
+                searchTerms.forEach(term => {
+                    searchConditions.push(
+                        { busNumber: { $regex: term, $options: 'i' } },
+                        { routeName: { $regex: term, $options: 'i' } },
+                        { driverName: { $regex: term, $options: 'i' } },
+                        // Search in route stops
+                        { 'route.stops.name': { $regex: term, $options: 'i' } },
+                        { 'route.startPoint.name': { $regex: term, $options: 'i' } },
+                        { 'route.endPoint.name': { $regex: term, $options: 'i' } }
+                    );
+                });
+
+                searchFilter.$or = searchConditions;
+            } else {
+                // Standard search without translation
+                searchFilter.$or = [
+                    { busNumber: { $regex: query, $options: 'i' } },
+                    { routeName: { $regex: query, $options: 'i' } },
+                    { driverName: { $regex: query, $options: 'i' } },
+                    { 'route.stops.name': { $regex: query, $options: 'i' } },
+                    { 'route.startPoint.name': { $regex: query, $options: 'i' } },
+                    { 'route.endPoint.name': { $regex: query, $options: 'i' } }
+                ];
+            }
+        } catch (translationError) {
+            console.warn('Translation failed, falling back to original search:', translationError);
+            // Fallback to original search if translation fails
+            searchFilter.$or = [
+                { busNumber: { $regex: query, $options: 'i' } },
+                { routeName: { $regex: query, $options: 'i' } },
+                { driverName: { $regex: query, $options: 'i' } },
+                { 'route.stops.name': { $regex: query, $options: 'i' } },
+                { 'route.startPoint.name': { $regex: query, $options: 'i' } },
+                { 'route.endPoint.name': { $regex: query, $options: 'i' } }
+            ];
+        }
     }
 
     let buses = await Bus.find(searchFilter);
@@ -270,7 +323,8 @@ const searchBuses = asyncHandler(async (req, res) => {
                             ...bus.toObject(),
                             distance: Math.round(distance * 100) / 100,
                             currentLocation: latestLocation.location,
-                            lastUpdated: latestLocation.lastSeen
+                            lastUpdated: latestLocation.lastSeen,
+                            isDriverOnline: await isDriverOnline(bus.busId)
                         };
                     }
                 }
@@ -278,17 +332,38 @@ const searchBuses = asyncHandler(async (req, res) => {
             })
         );
 
-        buses = busesWithDistance.filter(bus => bus !== null)
+        buses = busesWithDistance
+            .filter(bus => bus !== null)
             .sort((a, b) => a.distance - b.distance);
+    } else {
+        // Add real-time status for non-location based search
+        const activeBuses = await getActiveBuses();
+        const passengerCounts = await getBusPassengerCounts();
+
+        buses = buses.map(bus => {
+            const isOnline = activeBuses.some(activeBus => activeBus.busId === bus.busId);
+            return {
+                ...bus.toObject(),
+                isDriverOnline: isOnline,
+                connectedPassengers: passengerCounts[bus.busId] || 0
+            };
+        });
     }
 
+    // Enhanced response with translation info
+    const response = {
+        buses,
+        searchInfo: {
+            originalQuery: query || '',
+            translatedQuery: translatedQuery || '',
+            resultCount: buses.length,
+            searchRadius: latitude && longitude ? `${radius} km` : null,
+            translationInfo
+        }
+    };
+
     return res.status(200).json(
-        new ApiResponse(200, {
-            buses,
-            searchQuery: query || null,
-            location: latitude && longitude ? { latitude, longitude, radius } : null,
-            count: buses.length
-        }, "Bus search completed successfully")
+        new ApiResponse(200, response, `Found ${buses.length} buses` + (translationInfo?.wasTranslated ? ` (translated from "${translationInfo.original}")` : ''))
     );
 });
 
@@ -769,7 +844,7 @@ export  const MakeTheBusActive = asyncHandler(async (req, res) => {
     const { busId,secretKey } = req.body
     console.log(req.body);
     // Find the bus by ID and update its status
-    const bus = await Bus.findOne({ busId });
+    const bus = await Bus.findOne({busId: busId });
     if (!bus) {
         return res.status(404).json({ message: "Bus not found" });
     }
