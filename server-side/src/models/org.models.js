@@ -1,6 +1,6 @@
 import mongoose ,{Schema} from "mongoose";
 import jwt from "jsonwebtoken";
-
+import { User } from "./user.models.js";
 import bcrypt from "bcrypt";
 
 import dotenv from "dotenv";
@@ -14,6 +14,8 @@ dotenv.config({
 
 const orgSchema =new Schema({
 
+
+   
     
     email:{
         type:String,

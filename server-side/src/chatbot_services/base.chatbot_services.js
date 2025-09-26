@@ -252,6 +252,7 @@ const searchBusesWithFuzzyLogic = async (source, destination) => {
         driverName: bus.driverName,
         driverPhone: bus.driverPhone,
         capacity: bus.capacity,
+        currentOccupancy: bus.currentOccupancy,
         isActive: bus.isActive,
         route: {
           startPoint: bus.route?.startPoint,

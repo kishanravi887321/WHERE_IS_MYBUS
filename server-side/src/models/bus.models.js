@@ -2,11 +2,11 @@ import mongoose, { Schema } from "mongoose";
 import { Organization } from "./org.models.js";
 
 const busSchema = new Schema({
-//    ownerOrg: {
-//     type: Schema.Types.ObjectId,
-//     ref: "Organization",
-//     required: true
-//   },
+   ownerOrg: {
+    type: Schema.Types.ObjectId,
+    ref: "Organization",
+    required: true
+  },
     busId: {
         type: String,
         required: true,
@@ -43,6 +43,11 @@ const busSchema = new Schema({
         type: Number,
         required: true,
         min: 1
+    },
+    currentOccupancy: {
+        type: Number,
+        default: 0,
+        min: 0
     },
     isActive: {
         type: Boolean,
