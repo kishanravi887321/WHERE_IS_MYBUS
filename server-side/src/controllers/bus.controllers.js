@@ -934,6 +934,24 @@ export const makeTheBusRoute = asyncHandler(async (req, res) => {
     });
 });
 
+export  const updatePaassenger = asyncHandler(async (req, res) => {
+    const { busId, passengerCount } = req.body;
+
+    if (!busId || passengerCount === undefined) {
+        return res.status(400).json({ message: "busId and passengerCount are required" });
+    }
+
+    const bus = await Bus.findOne({ busId: busId });
+    if (!bus) {
+        return res.status(404).json({ message: "Bus not found" });
+    }
+
+    bus.capacity= passengerCount;
+    await bus.save();
+
+    return res.status(200).json({ message: "Passenger count updated successfully", bus });
+});
+
 export {
   
     createBus,
@@ -945,7 +963,8 @@ export {
     getActiveBusesStatus,
     searchBuses,
     getBusesByBoardingStop,
-    getBusesFromStopToStop
+    getBusesFromStopToStop,
+    
 };
 
 
