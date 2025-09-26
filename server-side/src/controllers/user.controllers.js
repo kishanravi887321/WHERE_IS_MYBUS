@@ -197,6 +197,7 @@ const logoutUser = asyncHandler(async (req, res) => {
 
 /// update password --->>  using the refreshToken
 
+
 const updatePassword = asyncHandler(async (req, res) => {
     const { oldpassword, newpassword } = req.body;
 

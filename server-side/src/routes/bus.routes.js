@@ -11,7 +11,8 @@ import {
     searchBuses,
     getBusesByBoardingStop,
     MakeTheBusActive,
-    getBusesFromStopToStop
+    getBusesFromStopToStop,
+    updatePaassenger
 } from "../controllers/bus.controllers.js";
 
 const router = Router();
@@ -26,6 +27,7 @@ router.route("/").get(getAllBuses);
 router.route("/make-active").post(MakeTheBusActive);
 router.route("/:busId").get(getBusById);
 router.route("/:busId/location-history").get(getBusLocationHistory);
+router.route("/update-passenger-count").post(updatePaassenger);
 
 // Admin routes (you can add authentication middleware here later)
 router.route("/").post(createBus);
