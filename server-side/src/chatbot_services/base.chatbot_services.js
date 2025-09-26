@@ -11,7 +11,7 @@ const searchBusesWithFuzzyLogic = async (source, destination) => {
     console.log(`🔍 Fuzzy searching buses: "${source}" → "${destination}"`);
 
     // Fetch all active buses with populated route data
-    const buses = await Bus.find({ isActive: true }).lean();
+    const buses = await Bus.find().lean();
     
     if (!buses.length) {
       console.log("❌ No active buses found in database");
