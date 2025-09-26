@@ -6,6 +6,7 @@ import { ApiResponse } from "../utils/ApiResponse.js";
 import { getActiveBuses, isDriverOnline } from "../sockets_services/bus.sockets_services.js";
 import { getBusPassengerCounts } from "../sockets_services/client.sockets_services.js";
 import { redisClient } from "../db/redis.db.js";
+import { Organization } from "../models/org.models.js";
 import simplify from "simplify-js";
 
 // Create a new bus
@@ -19,6 +20,10 @@ const createBus = asyncHandler(async (req, res) => {
 
     if (existingBus) {
         throw new ApiError(409, "Bus with this ID or number already exists");
+    }
+    const org = await Organization.findOne({ email: ownerEmail });
+    if (!org) {
+        throw new ApiError(404, "Organization not found");
     }
 
     const bus = await Bus.create({
