@@ -781,13 +781,19 @@ const searchBusesWithFuzzyLogic = async (source, destination) => {
         const query = stopName.toLowerCase();
         
         // Check startPoint
-        if (bus.route?.startPoint?.name && bus.route.startPoint.name.toLowerCase().includes(query) || query.includes(bus.route.startPoint.name.toLowerCase())) {
-          return { ...bus.route.startPoint, order: 0, type: 'startPoint' };
+        if (bus.route?.startPoint?.name) {
+          const startPointName = bus.route.startPoint.name.toLowerCase();
+          if (startPointName.includes(query) || query.includes(startPointName)) {
+            return { ...bus.route.startPoint, order: 0, type: 'startPoint' };
+          }
         }
         
         // Check endPoint
-        if (bus.route?.endPoint?.name && bus.route.endPoint.name.toLowerCase().includes(query) || query.includes(bus.route.endPoint.name.toLowerCase())) {
-          return { ...bus.route.endPoint, order: 999999, type: 'endPoint' };
+        if (bus.route?.endPoint?.name) {
+          const endPointName = bus.route.endPoint.name.toLowerCase();
+          if (endPointName.includes(query) || query.includes(endPointName)) {
+            return { ...bus.route.endPoint, order: 999999, type: 'endPoint' };
+          }
         }
         
         // Check stops
