@@ -1,5 +1,6 @@
 import  {router as usersRouter} from "./routes/users.routes.js";
 import  {router as busRouter} from "./routes/bus.routes.js";
+import  {router as orgRouter} from "./routes/org.routes.js";
 import cors from "cors";
 import { errorHandler } from "./middleware/errorhandler.middlewares.js";
     
@@ -10,6 +11,7 @@ app.use(express.json());
 
 app.use("/api/users", usersRouter);
 app.use("/api/buses", busRouter);
+app.use("/api/orgs", orgRouter);
 
 app.get('/' , (req, res) => {
     res.send("hello from where is my bus  sockets+express server");

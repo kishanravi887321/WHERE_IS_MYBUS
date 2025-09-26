@@ -1,10 +1,12 @@
 import mongoose, { Schema } from "mongoose";
+import { Organization } from "./org.models.js";
 
 const busSchema = new Schema({
-    ownerEmail: {
-        type: String,
-        required: true,
-    },
+   ownerOrg: {
+    type: Schema.Types.ObjectId,
+    ref: "Organization",
+    required: true
+  },
     busId: {
         type: String,
         required: true,
