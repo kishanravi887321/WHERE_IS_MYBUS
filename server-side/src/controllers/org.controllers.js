@@ -5,7 +5,7 @@ import { User } from "../models/user.models.js";
 export const createOrganization = async (req, res, next) => {
     try {
         const { orgName, email, phoneNumber, city, state, website_url, location_url, password} = req.body;
-        if (!orgName || !email || !phoneNumber || !password || !cur_email) {
+        if (!orgName || !email || !phoneNumber || !password ) {
             return res.status(400).json({ status: "fail", message: "Organization name, email, phone number, and password are required." });
         }
         const user= await User.findOne({email:req.user.email});
