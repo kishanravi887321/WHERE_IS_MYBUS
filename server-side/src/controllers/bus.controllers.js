@@ -9,6 +9,7 @@ import { redisClient } from "../db/redis.db.js";
 import GeminiService from "../services/gemini.service.js";
 import { Organization } from "../models/org.models.js";
 import simplify from "simplify-js";
+import Fuse from "fuse.js";
 
 // Create a new bus
 const createBus = asyncHandler(async (req, res) => {
@@ -527,7 +528,344 @@ export const getAvailableBusesByStop = async (stopName) => {
     }
 };
 
-// 🚌 Find buses that travel from one stop to another
+// Fuzzy search function for bus routes
+const searchBusesWithFuzzyLogic = async (source, destination) => {
+  try {
+    console.log(`🔍 Fuzzy searching buses: "${source}" → "${destination}"`);
+
+    // Fetch all active buses with populated route data
+    const buses = await Bus.find().lean();
+    
+    if (!buses.length) {
+      console.log("❌ No active buses found in database");
+      return {
+        success: false,
+        message: "No active buses found in database",
+        results: []
+      };
+    }
+
+    console.log(`📊 Found ${buses.length} active buses in database`);
+    
+    // Debug: Log the first bus structure to understand data
+    if (buses.length > 0) {
+      console.log("🔍 Sample bus structure:", JSON.stringify(buses[0], null, 2));
+      
+      // Log all available stops for debugging
+      console.log("📍 Available stops in database:");
+      buses.forEach((bus, index) => {
+        if (index < 3) { // Show first 3 buses only
+          console.log(`  Bus ${bus.busNumber}:`);
+          console.log(`    Start: ${bus.route?.startPoint?.name || 'N/A'}`);
+          console.log(`    End: ${bus.route?.endPoint?.name || 'N/A'}`);
+          if (bus.route?.stops && bus.route.stops.length > 0) {
+            console.log(`    Stops: ${bus.route.stops.map(s => s.name).join(', ')}`);
+          }
+        }
+      });
+    }
+
+    // Enhanced Fuse.js options for better fuzzy matching
+    const fuseOptions = {
+      includeScore: true,
+      threshold: 0.3, // More lenient matching (0 = exact, 1 = match anything)
+      ignoreLocation: true,
+      findAllMatches: true,
+      minMatchCharLength: 1,
+      distance: 100, // How far to search
+      keys: [
+        // Search in route information with different weights
+        { name: "route.startPoint.name", weight: 0.4 },
+        { name: "route.endPoint.name", weight: 0.4 },
+        { name: "route.stops.name", weight: 0.4 },
+        { name: "routeName", weight: 0.3 },
+        { name: "busNumber", weight: 0.1 },
+        // Add enhanced searchable fields
+        { name: "searchableRoute", weight: 0.5 },
+        { name: "allStops", weight: 0.4 },
+        { name: "startDestination", weight: 0.3 }
+      ]
+    };
+
+    // Create enhanced search data with all possible text combinations
+    const enhancedBuses = buses.map(bus => {
+      const routeStops = bus.route?.stops || [];
+      const startPoint = bus.route?.startPoint?.name || '';
+      const endPoint = bus.route?.endPoint?.name || '';
+      
+      // Create comprehensive searchable text
+      const allStopsText = routeStops.map(stop => stop.name || '').filter(Boolean).join(' ');
+      const fullRouteText = [startPoint, ...routeStops.map(s => s.name), endPoint].filter(Boolean).join(' ');
+      
+      const enhanced = {
+        ...bus,
+        // Searchable combinations
+        searchableRoute: fullRouteText.toLowerCase(),
+        allStops: allStopsText.toLowerCase(),
+        startDestination: `${startPoint} ${endPoint}`.toLowerCase(),
+        // Individual fields for easier access
+        startPointName: startPoint.toLowerCase(),
+        endPointName: endPoint.toLowerCase(),
+        stopNames: routeStops.map(stop => (stop.name || '').toLowerCase())
+      };
+      
+      console.log(`🚌 Bus ${bus.busNumber}: Route = "${fullRouteText}"`);
+      return enhanced;
+    });
+
+    // Multiple search strategies for better results
+    const fuse = new Fuse(enhancedBuses, fuseOptions);
+    
+    console.log(`🎯 Searching for source: "${source}" and destination: "${destination}"`);
+    
+    // Strategy 1: Combined search
+    const combinedQuery = `${source} ${destination}`.toLowerCase();
+    console.log(`🔍 Combined search query: "${combinedQuery}"`);
+    const combinedResults = fuse.search(combinedQuery);
+    
+    // Strategy 2: Individual searches
+    const sourceQuery = source.toLowerCase();
+    const destinationQuery = destination.toLowerCase();
+    console.log(`🔍 Source query: "${sourceQuery}"`);
+    console.log(`🔍 Destination query: "${destinationQuery}"`);
+    
+    const sourceResults = fuse.search(sourceQuery);
+    const destinationResults = fuse.search(destinationQuery);
+    
+    console.log(`📊 Search results - Combined: ${combinedResults.length}, Source: ${sourceResults.length}, Dest: ${destinationResults.length}`);
+
+    // Strategy 3: Manual string matching for fallback
+    const manualMatches = enhancedBuses.filter(bus => {
+      const routeText = bus.searchableRoute;
+      const sourceMatch = routeText.includes(sourceQuery) || 
+                         bus.stopNames.some(stop => stop.includes(sourceQuery) || sourceQuery.includes(stop));
+      const destMatch = routeText.includes(destinationQuery) || 
+                       bus.stopNames.some(stop => stop.includes(destinationQuery) || destinationQuery.includes(stop));
+      
+      const matches = sourceMatch && destMatch;
+      if (matches) {
+        console.log(`✅ Manual match found: Bus ${bus.busNumber} - Route: "${routeText}"`);
+      }
+      return matches;
+    });
+
+    console.log(`📊 Manual matches found: ${manualMatches.length}`);
+
+    // Combine all results
+    let allResults = [];
+    
+    // Add combined results
+    allResults = allResults.concat(combinedResults.map(r => ({...r, matchType: 'combined'})));
+    
+    // Add intersection results (buses that match both source AND destination)
+    const matchedBusIds = new Set();
+    sourceResults.forEach(sResult => {
+      destinationResults.forEach(dResult => {
+        if (sResult.item._id.toString() === dResult.item._id.toString()) {
+          const combinedScore = (sResult.score + dResult.score) / 2;
+          
+          if (!matchedBusIds.has(sResult.item._id.toString())) {
+            allResults.push({
+              item: sResult.item,
+              score: combinedScore,
+              matchType: 'intersection'
+            });
+            matchedBusIds.add(sResult.item._id.toString());
+          }
+        }
+      });
+    });
+
+    // Add manual matches with high priority
+    manualMatches.forEach(bus => {
+      if (!matchedBusIds.has(bus._id.toString())) {
+        allResults.push({
+          item: bus,
+          score: 0.1, // High priority score
+          matchType: 'manual'
+        });
+        matchedBusIds.add(bus._id.toString());
+      }
+    });
+
+    // Strategy 4: Route sequence matching (source appears before destination in route)
+    const sequenceMatches = enhancedBuses.filter(bus => {
+      const routeStops = [
+        bus.startPointName,
+        ...bus.stopNames,
+        bus.endPointName
+      ].filter(Boolean);
+
+      const sourceIndex = routeStops.findIndex(stop => 
+        stop.includes(sourceQuery) || sourceQuery.includes(stop)
+      );
+      
+      const destIndex = routeStops.findIndex(stop => 
+        stop.includes(destinationQuery) || destinationQuery.includes(stop)
+      );
+
+      const isSequence = sourceIndex !== -1 && destIndex !== -1 && sourceIndex < destIndex;
+      if (isSequence) {
+        console.log(`🎯 Sequence match: Bus ${bus.busNumber} - ${routeStops[sourceIndex]} → ${routeStops[destIndex]}`);
+      }
+      return isSequence;
+    });
+
+    // Add sequence matches
+    sequenceMatches.forEach(bus => {
+      if (!matchedBusIds.has(bus._id.toString())) {
+        allResults.push({
+          item: bus,
+          score: 0.05, // Highest priority
+          matchType: 'sequence'
+        });
+        matchedBusIds.add(bus._id.toString());
+      }
+    });
+
+    // Remove duplicates and sort by score (lower = better)
+    const uniqueResults = allResults
+      .filter((result, index, array) => 
+        array.findIndex(r => r.item._id.toString() === result.item._id.toString()) === index
+      )
+      .sort((a, b) => a.score - b.score)
+      .slice(0, 10);
+
+    console.log(`✅ Final results: ${uniqueResults.length} unique matches found`);
+
+    if (!uniqueResults.length) {
+      // Provide helpful feedback with actual available locations
+      const allLocations = enhancedBuses.flatMap(bus => [
+        bus.startPointName,
+        bus.endPointName,
+        ...bus.stopNames
+      ]).filter(Boolean);
+
+      const uniqueLocations = [...new Set(allLocations)];
+      
+      console.log(`💡 Available locations: ${uniqueLocations.slice(0, 10).join(', ')}`);
+      
+      return {
+        success: false,
+        message: "No matching bus routes found",
+        debug: {
+          searchedFor: { source, destination },
+          availableLocations: uniqueLocations.slice(0, 20),
+          totalBuses: buses.length,
+          searchResults: {
+            combined: combinedResults.length,
+            source: sourceResults.length,
+            destination: destinationResults.length,
+            manual: manualMatches.length,
+            sequence: sequenceMatches.length
+          }
+        },
+        suggestions: {
+          availableLocations: uniqueLocations.slice(0, 10),
+          searchTips: [
+            "Try using partial names (e.g., 'Sud' for 'Sudhowala')",
+            "Check spelling of source and destination",
+            "Make sure both locations are served by our bus network"
+          ]
+        },
+        results: []
+      };
+    }
+
+    // Convert fuzzy results to bus journey format
+    const validBuses = uniqueResults.map(result => {
+      const bus = result.item;
+      
+      // Find matching stops for journey details
+      const findBestStopMatch = (stopName) => {
+        const query = stopName.toLowerCase();
+        
+        // Check startPoint
+        if (bus.route?.startPoint?.name && bus.route.startPoint.name.toLowerCase().includes(query) || query.includes(bus.route.startPoint.name.toLowerCase())) {
+          return { ...bus.route.startPoint, order: 0, type: 'startPoint' };
+        }
+        
+        // Check endPoint
+        if (bus.route?.endPoint?.name && bus.route.endPoint.name.toLowerCase().includes(query) || query.includes(bus.route.endPoint.name.toLowerCase())) {
+          return { ...bus.route.endPoint, order: 999999, type: 'endPoint' };
+        }
+        
+        // Check stops
+        if (bus.route?.stops) {
+          const matchingStop = bus.route.stops.find(stop => 
+            stop.name && (stop.name.toLowerCase().includes(query) || query.includes(stop.name.toLowerCase()))
+          );
+          if (matchingStop) {
+            return { ...matchingStop, type: 'stop' };
+          }
+        }
+        
+        return null;
+      };
+
+      const fromStopDetails = findBestStopMatch(source);
+      const toStopDetails = findBestStopMatch(destination);
+
+      // Calculate journey details if both stops found
+      let stopsInBetween = [];
+      let totalStopsInJourney = 0;
+
+      if (fromStopDetails && toStopDetails && fromStopDetails.order < toStopDetails.order) {
+        if (bus.route?.stops) {
+          stopsInBetween = bus.route.stops.filter(stop => 
+            stop.order > fromStopDetails.order && stop.order < toStopDetails.order
+          ).sort((a, b) => a.order - b.order);
+        }
+        totalStopsInJourney = toStopDetails.order - fromStopDetails.order;
+      }
+
+      return {
+        ...bus,
+        fuzzyMatch: {
+          score: result.score,
+          matchType: result.matchType
+        },
+        journeyDetails: {
+          fromStop: fromStopDetails,
+          toStop: toStopDetails,
+          stopsInBetween,
+          totalStopsInJourney,
+          estimatedJourneyTime: `${Math.max(totalStopsInJourney * 15, 15)} minutes`
+        }
+      };
+    });
+
+    console.log(`✅ Processed ${validBuses.length} valid buses with journey details`);
+
+    return {
+      success: true,
+      message: `Found ${validBuses.length} matching buses`,
+      results: validBuses,
+      debug: {
+        searchedFor: { source, destination },
+        totalBuses: buses.length,
+        fuzzyResults: uniqueResults.length,
+        strategies: {
+          combined: combinedResults.length,
+          intersection: matchedBusIds.size,
+          manual: manualMatches.length,
+          sequence: sequenceMatches.length
+        }
+      }
+    };
+
+  } catch (error) {
+    console.error('❌ Error in fuzzy bus search:', error);
+    return {
+      success: false,
+      message: "Error performing fuzzy search",
+      error: error.message,
+      results: []
+    };
+  }
+};
+
+// 🚌 Find buses that travel from one stop to another (WITH FUZZY SEARCH)
 const getBusesFromStopToStop = asyncHandler(async (req, res) => {
     const { fromStop, toStop } = req.params;
     const { includeDriverStatus = false } = req.query;
@@ -543,200 +881,26 @@ const getBusesFromStopToStop = asyncHandler(async (req, res) => {
         throw new ApiError(400, "From stop and to stop cannot be the same");
     }
 
-    // Optimized query: Find buses by checking startPoint, endPoint, and stops in order
-    const buses = await Bus.aggregate([
-        {
-            // First stage: Find buses that contain fromStop in startPoint, endPoint, or stops
-            $match: {
-                $or: [
-                    // Check if fromStop matches startPoint
-                    { "route.startPoint.name": { $regex: new RegExp(`^${fromStop.trim()}$`, 'i') } },
-                    // Check if fromStop matches endPoint  
-                    { "route.endPoint.name": { $regex: new RegExp(`^${fromStop.trim()}$`, 'i') } },
-                    // Check if fromStop is in stops array
-                    { "route.stops.name": { $regex: new RegExp(`^${fromStop.trim()}$`, 'i') } }
-                ]
-            }
-        },
-        {
-            // Add fields to determine the order positions of fromStop and toStop
-            $addFields: {
-                fromStopPosition: {
-                    $cond: {
-                        if: { $regexMatch: { input: "$route.startPoint.name", regex: new RegExp(`^${fromStop.trim()}$`, 'i') } },
-                        then: 0, // startPoint has order 0
-                        else: {
-                            $cond: {
-                                if: { $regexMatch: { input: "$route.endPoint.name", regex: new RegExp(`^${fromStop.trim()}$`, 'i') } },
-                                then: 999999, // endPoint has high order
-                                else: {
-                                    // Find order in stops array
-                                    $let: {
-                                        vars: {
-                                            matchingStop: {
-                                                $arrayElemAt: [
-                                                    {
-                                                        $filter: {
-                                                            input: "$route.stops",
-                                                            cond: {
-                                                                $regexMatch: {
-                                                                    input: "$$this.name",
-                                                                    regex: new RegExp(`^${fromStop.trim()}$`, 'i')
-                                                                }
-                                                            }
-                                                        }
-                                                    },
-                                                    0
-                                                ]
-                                            }
-                                        },
-                                        in: { $ifNull: ["$$matchingStop.order", -1] }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                },
-                toStopPosition: {
-                    $cond: {
-                        if: { $regexMatch: { input: "$route.startPoint.name", regex: new RegExp(`^${toStop.trim()}$`, 'i') } },
-                        then: 0, // startPoint has order 0
-                        else: {
-                            $cond: {
-                                if: { $regexMatch: { input: "$route.endPoint.name", regex: new RegExp(`^${toStop.trim()}$`, 'i') } },
-                                then: 999999, // endPoint has high order
-                                else: {
-                                    // Find order in stops array
-                                    $let: {
-                                        vars: {
-                                            matchingStop: {
-                                                $arrayElemAt: [
-                                                    {
-                                                        $filter: {
-                                                            input: "$route.stops",
-                                                            cond: {
-                                                                $regexMatch: {
-                                                                    input: "$$this.name",
-                                                                    regex: new RegExp(`^${toStop.trim()}$`, 'i')
-                                                                }
-                                                            }
-                                                        }
-                                                    },
-                                                    0
-                                                ]
-                                            }
-                                        },
-                                        in: { $ifNull: ["$$matchingStop.order", -1] }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        {
-            // Filter: Both stops must exist and fromStop must come before toStop
-            $match: {
-                $and: [
-                    { fromStopPosition: { $gte: 0 } }, // fromStop exists
-                    { toStopPosition: { $gte: 0 } },   // toStop exists
-                    { $expr: { $lt: ["$fromStopPosition", "$toStopPosition"] } } // fromStop comes before toStop
-                ]
-            }
-        },
-        {
-            // Remove temporary calculation fields
-            $unset: ["fromStopPosition", "toStopPosition"]
-        }
-    ]);
+    console.log(`🔍 Searching buses from "${fromStop}" to "${toStop}" using FUZZY search`);
 
-    // Filter buses that travel from fromStop to toStop (already done in aggregation)
-    const validBuses = buses; // No additional filtering needed as aggregation handles this
+    // Use fuzzy search logic
+    const fuzzySearchResult = await searchBusesWithFuzzyLogic(fromStop, toStop);
 
-    // Add detailed information for each valid bus
-    let busesWithJourneyDetails = validBuses.map(bus => {
-        // Helper function to find stop details by name
-        const findStopDetails = (stopName) => {
-            // Check startPoint first
-            if (bus.route.startPoint && bus.route.startPoint.name && 
-                bus.route.startPoint.name.toLowerCase().trim() === stopName.toLowerCase().trim()) {
-                return {
-                    ...bus.route.startPoint,
-                    order: 0 // startPoint has order 0
-                };
-            }
-            
-            // Check endPoint
-            if (bus.route.endPoint && bus.route.endPoint.name && 
-                bus.route.endPoint.name.toLowerCase().trim() === stopName.toLowerCase().trim()) {
-                return {
-                    ...bus.route.endPoint,
-                    order: 999999 // endPoint has high order
-                };
-            }
-            
-            // Check in stops array
-            if (bus.route.stops && bus.route.stops.length > 0) {
-                const stopInArray = bus.route.stops.find(stop => 
-                    stop.name && stop.name.toLowerCase().trim() === stopName.toLowerCase().trim()
-                );
-                if (stopInArray) {
-                    return stopInArray;
-                }
-            }
-            
-            return null;
-        };
+    if (!fuzzySearchResult.success) {
+        return res.status(404).json(
+            new ApiResponse(404, {
+                fromStop,
+                toStop,
+                availableBuses: [],
+                totalBuses: 0,
+                searchTimestamp: new Date().toISOString(),
+                debug: fuzzySearchResult.debug,
+                suggestions: fuzzySearchResult.suggestions
+            }, fuzzySearchResult.message)
+        );
+    }
 
-        const fromStopDetails = findStopDetails(fromStop);
-        const toStopDetails = findStopDetails(toStop);
-
-        // Calculate journey details
-        let stopsInBetween = [];
-        let totalStopsInJourney = 0;
-
-        if (fromStopDetails && toStopDetails) {
-            // Get all intermediate stops between fromStop and toStop
-            if (bus.route.stops && bus.route.stops.length > 0) {
-                stopsInBetween = bus.route.stops.filter(stop => 
-                    stop.order > fromStopDetails.order && stop.order < toStopDetails.order
-                ).sort((a, b) => a.order - b.order);
-            }
-
-            totalStopsInJourney = toStopDetails.order - fromStopDetails.order;
-            
-            // If one is startPoint/endPoint, calculate differently
-            if (fromStopDetails.order === 0 || toStopDetails.order === 999999) {
-                totalStopsInJourney = stopsInBetween.length + 1;
-            }
-        }
-
-        return {
-            ...bus, // Note: aggregation results don't need .toObject()
-            journeyDetails: {
-                fromStop: fromStopDetails ? {
-                    name: fromStopDetails.name,
-                    latitude: fromStopDetails.latitude,
-                    longitude: fromStopDetails.longitude,
-                    order: fromStopDetails.order,
-                    type: fromStopDetails.order === 0 ? 'startPoint' : 
-                          fromStopDetails.order === 999999 ? 'endPoint' : 'stop'
-                } : null,
-                toStop: toStopDetails ? {
-                    name: toStopDetails.name,
-                    latitude: toStopDetails.latitude,
-                    longitude: toStopDetails.longitude,
-                    order: toStopDetails.order,
-                    type: toStopDetails.order === 0 ? 'startPoint' : 
-                          toStopDetails.order === 999999 ? 'endPoint' : 'stop'
-                } : null,
-                stopsInBetween: stopsInBetween,
-                totalStopsInJourney: totalStopsInJourney,
-                estimatedJourneyTime: `${Math.max(totalStopsInJourney * 15, 15)} minutes` // Minimum 15 mins
-            }
-        };
-    });
+    let busesWithJourneyDetails = fuzzySearchResult.results;
 
     // Add real-time status if requested
     if (includeDriverStatus === 'true') {
@@ -756,12 +920,14 @@ const getBusesFromStopToStop = asyncHandler(async (req, res) => {
 
     return res.status(200).json(
         new ApiResponse(200, {
-            fromStop: fromStop,
-            toStop: toStop,
+            fromStop,
+            toStop,
+            searchMethod: "fuzzy",
             availableBuses: busesWithJourneyDetails,
             totalBuses: busesWithJourneyDetails.length,
-            searchTimestamp: new Date().toISOString()
-        }, `Found ${busesWithJourneyDetails.length} buses traveling from ${fromStop} to ${toStop}`)
+            searchTimestamp: new Date().toISOString(),
+            debug: fuzzySearchResult.debug
+        }, `Found ${busesWithJourneyDetails.length} buses using fuzzy search`)
     );
 });
 
@@ -774,7 +940,7 @@ export const getAvailableBusesFromStopToStop = async (fromStop, toStop) => {
         }
 
         // Get all active buses
-        const buses = await Bus.find({ isActive: true });
+        const buses = await Bus.find();
 
         // Filter buses that travel from fromStop to toStop
         const validBuses = buses.filter(bus => {
@@ -964,6 +1130,7 @@ export {
     searchBuses,
     getBusesByBoardingStop,
     getBusesFromStopToStop,
+   
     
 };
 

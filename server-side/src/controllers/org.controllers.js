@@ -1,11 +1,16 @@
 import { Organization  } from "../models/org.models.js";
 import { Bus } from "../models/bus.models.js";
+import { User } from "../models/user.models.js";
 
 export const createOrganization = async (req, res, next) => {
     try {
-        const { orgName, email, phoneNumber, city, state, website_url, location_url, password } = req.body;
-        if (!orgName || !email || !phoneNumber || !password) {
+        const { orgName, email, phoneNumber, city, state, website_url, location_url, password} = req.body;
+        if (!orgName || !email || !phoneNumber || !password || !cur_email) {
             return res.status(400).json({ status: "fail", message: "Organization name, email, phone number, and password are required." });
+        }
+        const user= await User.findOne({email:req.user.email});
+        if(!user){
+            return res.status(409).json({ status: "fail", message: "User with this email does not exist." });
         }
 
         const existingOrg = await Organization.findOne({ email });
@@ -13,6 +18,7 @@ export const createOrganization = async (req, res, next) => {
             return res.status(409).json({ status: "fail", message: "Organization with this email already exists." });
         }
         const org = new Organization({
+          username:user._id,
             orgName,
             email,
             phoneNumber,
@@ -64,4 +70,26 @@ export const getOrganizationBuses = async (req, res, next) => {
   } catch (error) {
     next(error);
   }
+};
+
+
+export const checkOrganizationExists = async (req, res, next) => {
+    try {
+        const { email } = req.body;
+        if (!email) {
+            return res.status(400).json({ status: "fail", message: "Email is required." });
+        }
+
+        const user= await User.findOne({email:email.toLowerCase().trim()});
+        if(!user){
+            return res.status(409).json({ status: "fail", message: "User with this email does not exist." });
+        }
+        const org = await Organization.findOne({ username:user._id  });
+        if (!org) {
+            return res.status(409).json({ status: "fail", message: "Organization with this email does not exist." });
+        }
+        res.status(200).json({ status: "success", message: "Organization exists.", data: { organization: org } });
+    } catch (error) {
+        next(error);
+    }
 };
