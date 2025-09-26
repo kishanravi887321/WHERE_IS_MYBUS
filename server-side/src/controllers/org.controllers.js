@@ -1,4 +1,5 @@
 import { Organization  } from "../models/org.models.js";
+import { Bus } from "../models/bus.models.js";
 
 export const createOrganization = async (req, res, next) => {
     try {
@@ -33,4 +34,34 @@ export const createOrganization = async (req, res, next) => {
     } catch (error) {
         next(error);
     }
+};
+
+export const getOrganizationBuses = async (req, res, next) => {
+  try {
+    const { email } = req.body; // GET /organizations/buses/:email
+    console.log(email)
+    const buses = await Bus.find()
+      .populate({
+        path: "ownerOrg",
+        match: { email: email.toLowerCase().trim() } // filter by org email
+      });
+      console.log(email)
+
+    // filter out buses where populate didn't match
+    const filteredBuses = buses.filter(bus => bus.ownerOrg);
+
+    if (!filteredBuses.length) {
+      return res.status(404).json({
+        status: "fail",
+        message: "No buses found for this organization"
+      });
+    }
+
+    res.status(200).json({
+      status: "success",
+      data: { buses: filteredBuses }
+    });
+  } catch (error) {
+    next(error);
+  }
 };
