@@ -1,10 +1,20 @@
 import mongoose, { Schema } from "mongoose";
+import { Organization } from "./org.models";
 
 const busSchema = new Schema({
     ownerEmail: {
-        type: String,
-        required: true,
-    },
+    type: String,
+    required: true,
+    trim: true,
+    lowercase: true,
+    validate: {
+        validator: async function (email) {
+            const org = await mongoose.model("Organization").findOne({ email });
+            return !!org;
+        },
+        message: "Organization with this email does not exist"
+    }
+},
     busId: {
         type: String,
         required: true,
