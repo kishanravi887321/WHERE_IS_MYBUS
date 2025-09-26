@@ -58,7 +58,7 @@ const orgSchema =new Schema({
 
 ////  adding the middleware that restircts the passwords, refreshtkn,accesstkn to being the populated 
 // Remove password field from the response when converting to JSON
-userSchema.set("toJSON",{
+orgSchema.set("toJSON",{
     transform:(doc,result,options)=>{  /// doc == mongoose doccument , result =the result object(the js object )  copy of the mongoose doccument
         delete result.password
        

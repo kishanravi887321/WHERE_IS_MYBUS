@@ -27,7 +27,7 @@ const createBus = asyncHandler(async (req, res) => {
     }
 
     const bus = await Bus.create({
-        ownerEmail,
+        ownerOrg: org._id,
         secretKey,
         busId,
         busNumber,
