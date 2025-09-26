@@ -14,9 +14,23 @@ dotenv.config({
 
 const orgSchema =new Schema({
 
+    username:{
+        type:Schema.Types.ObjectId,
+        ref:"User",
+        required:false
+    },
 
-   
-    
+
+   email:{
+       type:String,
+       required :true,
+       unique:true,
+       lowcase:true
+   },
+   orgName:{
+       required:false,
+       type :String,
+
     email:{
         type:String,
         required :true,
@@ -54,7 +68,7 @@ const orgSchema =new Schema({
 
     }
    ,
-    
+}
 
 },{Timestamps:true})
 
