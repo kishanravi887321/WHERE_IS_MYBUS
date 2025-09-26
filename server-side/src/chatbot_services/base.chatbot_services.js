@@ -32,7 +32,7 @@ const searchBusesWithFuzzyLogic = async (source, destination) => {
     // Enhanced Fuse.js options for better fuzzy matching
     const fuseOptions = {
       includeScore: true,
-      threshold: 0.8, // More lenient matching (0 = exact, 1 = match anything)
+      threshold: 0.3, // More lenient matching (0 = exact, 1 = match anything)
       ignoreLocation: true,
       findAllMatches: true,
       minMatchCharLength: 1,
