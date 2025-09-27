@@ -12,7 +12,8 @@ import {
     getBusesByBoardingStop,
     MakeTheBusActive,
     getBusesFromStopToStop,
-    updatePaassenger
+    updatePaassenger,
+    makethebusInactive
 } from "../controllers/bus.controllers.js";
 
 const router = Router();
@@ -25,6 +26,7 @@ router.route("/stop/:stopName").get(getBusesByBoardingStop);
 router.route("/route/:fromStop/:toStop").get(getBusesFromStopToStop);
 router.route("/").get(getAllBuses);
 router.route("/make-active").post(MakeTheBusActive);
+router.route("/make-inactive").post(makethebusInactive);
 router.route("/:busId").get(getBusById);
 router.route("/:busId/location-history").get(getBusLocationHistory);
 router.route("/update-passenger-count").post(updatePaassenger);

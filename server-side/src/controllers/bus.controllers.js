@@ -1124,6 +1124,28 @@ export  const updatePaassenger = asyncHandler(async (req, res) => {
     return res.status(200).json({ message: "Passenger count updated successfully", bus });
 });
 
+export const makethebusInactive = asyncHandler(async (req, res) => {
+    const { busId, secretKey } = req.body;
+
+    if (!busId || !secretKey) {
+        return res.status(400).json({ message: "busId and secretKey are required" });
+    }
+
+    const bus = await Bus.findOne({ busId: busId });
+    if (!bus) {
+        return res.status(404).json({ message: "Bus not found" });
+    }
+
+    if (bus.secretKey !== secretKey) {
+        return res.status(403).json({ message: "Invalid secret key" });
+    }
+
+    bus.isActive = false;
+    await bus.save();
+
+    return res.status(200).json({ message: "Bus deactivated successfully", bus });
+});
+
 export {
   
     createBus,
