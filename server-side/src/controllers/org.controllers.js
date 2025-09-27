@@ -44,7 +44,7 @@ export const createOrganization = async (req, res, next) => {
 
 export const getOrganizationBuses = async (req, res, next) => {
   try {
-    const { email } = req.body; // GET /organizations/buses/:email
+    const  email  = req.user.email; // GET /organizations/buses/:email
     console.log(email)
     const buses = await Bus.find()
       .populate({
