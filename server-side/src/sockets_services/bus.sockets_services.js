@@ -181,8 +181,10 @@ export const handleDriverConnection = (io, socket) => {
             await setActiveBus(busId, busInfo);
             
             // Broadcast to all passengers in the bus room immediately
+            const bus = await Bus.findOne({ busId });
             const locationUpdate = {
                 busId,
+                occupancy: bus?.currentOccupancy || 0,
                 location,
                 speed: speed || 0,
                 heading: heading || 0,
