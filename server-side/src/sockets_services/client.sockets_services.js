@@ -124,6 +124,7 @@ export const handleClientConnection = (io, socket) => {
                     busNumber: bus.busNumber,
                     routeName: bus.routeName,
                     capacity: bus.capacity,
+                    currentOccupancy: bus.currentOccupancy,
                     driverName: bus.driverName
                 },
                 currentLocation: currentLocation,
