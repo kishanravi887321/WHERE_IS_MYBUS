@@ -1,7 +1,7 @@
 import { GoogleGenAI } from "@google/genai";
 
 // Initialize Gemini with new API structure
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "AIzaSyD8xe1lVI-ixyGx1ymcKrQghAK80tbfkvw";
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "AIzaSyD8xe1lVI-ixyGx1ymcKrQghAK80tbfkvw1";
 if (!GEMINI_API_KEY) {
   console.warn("⚠️ GEMINI_API_KEY missing in .env");
 }

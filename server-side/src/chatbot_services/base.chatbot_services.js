@@ -8,13 +8,13 @@ import { Bus } from "../models/bus.models.js";
  */
 const searchBusesWithFuzzyLogic = async (source, destination) => {
   try {
-    console.log(`🔍 Fuzzy searching buses: "${source}" → "${destination}"`);
+    console.log(`Fuzzy searching buses: "${source}" → "${destination}"`);
 
     // Fetch all active buses with populated route data
     const buses = await Bus.find().lean();
     
     if (!buses.length) {
-      console.log("❌ No active buses found in database");
+      console.log(" No active buses found in database");
       return {
         success: false,
         message: "No active buses found in database",
@@ -22,11 +22,11 @@ const searchBusesWithFuzzyLogic = async (source, destination) => {
       };
     }
 
-    console.log(`📊 Found ${buses.length} active buses in database`);
+    console.log(` Found ${buses.length} active buses in database`);
     
     // Debug: Log the first bus structure to understand data
     if (buses.length > 0) {
-      console.log("🔍 Sample bus structure:", JSON.stringify(buses[0], null, 2));
+      console.log(" Sample bus structure:", JSON.stringify(buses[0], null, 2));
     }
 
     // Enhanced Fuse.js options for better fuzzy matching
@@ -73,30 +73,30 @@ const searchBusesWithFuzzyLogic = async (source, destination) => {
         stopNames: routeStops.map(stop => (stop.name || '').toLowerCase())
       };
       
-      console.log(`🚌 Bus ${bus.busNumber}: Route = "${fullRouteText}"`);
+      console.log(` Bus ${bus.busNumber}: Route = "${fullRouteText}"`);
       return enhanced;
     });
 
     // Multiple search strategies for better results
     const fuse = new Fuse(enhancedBuses, fuseOptions);
     
-    console.log(`🎯 Searching for source: "${source}" and destination: "${destination}"`);
+    console.log(` Searching for source: "${source}" and destination: "${destination}"`);
     
     // Strategy 1: Combined search
     const combinedQuery = `${source} ${destination}`.toLowerCase();
-    console.log(`🔍 Combined search query: "${combinedQuery}"`);
+    console.log(` Combined search query: "${combinedQuery}"`);
     const combinedResults = fuse.search(combinedQuery);
     
     // Strategy 2: Individual searches
     const sourceQuery = source.toLowerCase();
     const destinationQuery = destination.toLowerCase();
-    console.log(`🔍 Source query: "${sourceQuery}"`);
-    console.log(`🔍 Destination query: "${destinationQuery}"`);
+    console.log(`  Source query: "${sourceQuery}"`);
+    console.log(` Destination query: "${destinationQuery}"`);
     
     const sourceResults = fuse.search(sourceQuery);
     const destinationResults = fuse.search(destinationQuery);
     
-    console.log(`📊 Search results - Combined: ${combinedResults.length}, Source: ${sourceResults.length}, Dest: ${destinationResults.length}`);
+    console.log(` Search results - Combined: ${combinedResults.length}, Source: ${sourceResults.length}, Dest: ${destinationResults.length}`);
 
     // Strategy 3: Manual string matching for fallback
     const manualMatches = enhancedBuses.filter(bus => {
@@ -108,7 +108,7 @@ const searchBusesWithFuzzyLogic = async (source, destination) => {
       
       const matches = sourceMatch && destMatch;
       if (matches) {
-        console.log(`✅ Manual match found: Bus ${bus.busNumber} - Route: "${routeText}"`);
+        console.log(` Manual match found: Bus ${bus.busNumber} - Route: "${routeText}"`);
       }
       return matches;
     });
