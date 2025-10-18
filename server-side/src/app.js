@@ -4,6 +4,7 @@ import  {router as orgRouter} from "./routes/org.routes.js";
 import  {router as translateRouter} from "./routes/translate.routes.js";
 import { router as transcriptionRouter  } from "./routes/chatbot_services.routes.js";
 import translationDemoRouter from "./test/translation-demo.js";
+import { verifyToken } from "./middleware/verifyjwtToken.middlewares.js";
 import cors from "cors";
 import { errorHandler } from "./middleware/errorhandler.middlewares.js";
     
@@ -19,10 +20,12 @@ app.use("/api/chatbot", transcriptionRouter);
 app.use("/api/translate", translateRouter);
 app.use("/api/demo", translationDemoRouter);
 
-app.get('/' , (req, res) => {
+app.get('/' ,verifyToken,(req, res) => {
+  console.log('chekd from hoem')
     res.send("hello from where is my bus  sockets+express server");
 });
 app.get('/activate' , (req, res) => {
+  console.log('hello')
     res.send("server is activation successful");
 });
   // to parse the json data coming from the client side
