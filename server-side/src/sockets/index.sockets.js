@@ -35,12 +35,12 @@ export const initSocket = (server) => {
                 const client = redisClient();
                 const storedToken = await client.get(uniqueKey);
 
-                if (!storedToken || storedToken !== token) {
-                    console.log(`❌ Invalid token for ${socket.id}`);
-                    socket.emit("identify:error", { message: "Invalid token" });
-                    socket.disconnect(true);
-                    return;
-                }
+                // if (!storedToken || storedToken !== token) {
+                //     console.log(`❌ Invalid token for ${socket.id}`);
+                //     socket.emit("identify:error", { message: "Invalid token" });
+                //     socket.disconnect(true);
+                //     return;
+                // }
                      socket.emit("identify:success");
                      socket.data.type="driver";
                     handleDriverConnection(io, socket);

@@ -94,7 +94,7 @@ const userLogin = asyncHandler(async (req, res) => {
     user.refreshToken = refreshToken;
     await user.save({ validateBeforeSave: false });
 
-    const userLoggedIn = await User.findById(user._id).select("-password -refreshToken");
+    const userLoggedIn = await User.findById(user._id).select("-password -refreshToken -_id");
 
     const options = {
         httpOnly: true,
